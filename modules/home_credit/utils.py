@@ -1,4 +1,4 @@
-from typing import *
+from typing import List, Tuple
 
 import pandas as pd
 import numpy as np
@@ -6,6 +6,7 @@ import numpy as np
 from IPython.display import display
 
 from pepper.utils import (
+    bold,
     print_subtitle,
     discrete_stats,
     display_dataframe_in_markdown
@@ -86,3 +87,79 @@ def expl_analysis_series(s):
 
 def expl_analysis_df(df):
     return df.apply(expl_analysis_series)
+
+
+""" Home Credit business var types
+"""
+
+
+def get_column_types_dist(df: pd.DataFrame) -> List[Tuple[str, int]]:
+    """Gets the count of columns per type (based on the prefix of their name)
+    in the given DataFrame.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame to analyze.
+
+    Returns
+    -------
+    List[Tuple[str, int]]
+        List of tuples representing the count of columns per type.
+        Each tuple contains a string representing the type and an integer
+        representing the count.
+        The list is sorted in priority order.
+    """
+    # Define column types sorting priority
+    priority = {
+        "SK": 0, "FLAG":1, "NFLAG":2, "NAME": 3, "NUM":4,
+        "DAYS":5, "CNT": 6, "AMT": 7, "MONTHS": 8
+    }
+
+    # Get column types counts
+    col_types = list(zip(
+        *np.unique(
+            [
+                col[:col.index("_")] if "_" in col else col
+                for col in df.columns
+            ],
+            return_counts=True
+        )
+    ))
+
+    # Sort it based on priority
+    sorted_col_types = sorted(
+        col_types,
+        key=lambda x: priority.get(x[0], float("inf")),
+        reverse=False
+    )
+
+    return sorted_col_types
+
+
+def display_frame_basic_infos(df: pd.DataFrame) -> None:
+    """Displays basic information about the given DataFrame.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The DataFrame to display information about.
+
+    Returns
+    -------
+    None
+        This function doesn't return anything, it just prints to the console.
+
+    Prints
+    ------
+    str
+        A formatted string containing the number of samples (rows) in the
+        DataFrame.
+    str
+        A formatted string containing the number of columns in the DataFrame,
+        as well as a list of tuples representing the count of columns per type.
+        Each tuple contains a string representing the type and an integer
+        representing the count. The list is sorted in priority order.
+    """
+    print(f"{bold('n_samples')}: {df.shape[0]:n}")
+    print(f"{bold('n_columns')}: {df.shape[1]:n}, {get_column_types_dist(df)}")
