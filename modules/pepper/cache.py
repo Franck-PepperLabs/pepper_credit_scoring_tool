@@ -67,7 +67,7 @@ class Cache:
             return table_name in Cache._data
 
     @staticmethod
-    def get(table_name: str) -> Union[pd.DataFrame, None]:
+    def get(table_name: str) -> pd.DataFrame:
         """Retrieves the cache for a given table.
 
         Parameters
@@ -77,13 +77,15 @@ class Cache:
 
         Returns
         -------
-        Union[pd.DataFrame, None]
-            The cache of the table if it exists, None otherwise.
+        pd.DataFrame
+            The cache of the table if it exists.
 
         Raises
         ------
         ValueError
             If `table_name` is not a valid identifier
+        KeyError
+            If `table_name` is not in the cache
         """
         if not (isinstance(table_name, str) and Cache._is_identifier(table_name)):
             raise ValueError(
@@ -91,13 +93,16 @@ class Cache:
             )
         with Cache._lock:
             # critical section, accessing _data
-            return Cache._data.get(table_name)
+            table = Cache._data.get(table_name)
+            if table is None:
+                raise KeyError(f"No cache found for table '{table_name}'")
+            return table
 
     @staticmethod
     def set(
         table_name: str,
-        table: Union[pd.DataFrame, None]
-    ) -> Union[pd.DataFrame, None]:
+        table: pd.DataFrame
+    ) -> pd.DataFrame:
         """Sets the cache for a given table.
 
         Parameters
@@ -138,7 +143,7 @@ class Cache:
     def init(
         table_name: str,
         loader: Callable[[], pd.DataFrame]
-    ) -> Union[pd.DataFrame, None]:
+    ) -> pd.DataFrame:
         """Initializes the cache for a table. If the cache for the table does
         not exist, it is loaded using the corresponding cache loader.
 
@@ -157,16 +162,16 @@ class Cache:
         ValueError
             If `table_name` is not a valid identifier.
         """
-        cache = Cache.get(table_name)
-        if cache is None:
+        if Cache.exists(table_name):
+            return Cache.get(table_name)
+        else:
             if not isinstance(loader, Callable):
                 raise TypeError(f"{loader} is not a Callable")
             Cache._loaders[table_name] = loader
-            cache = Cache.set(table_name, loader())
-        return cache
+            return Cache.set(table_name, loader())
 
     @staticmethod
-    def _reset_cache(table_name: str) -> Union[pd.DataFrame, None]:
+    def _reset_cache(table_name: str) -> pd.DataFrame:
         """Resets the cache for a table, by loading it again using the
         corresponding cache loader.
 
@@ -177,15 +182,19 @@ class Cache:
 
         Returns
         -------
-        Union[pd.DataFrame, None]
+        pd.DataFrame
             The cache of the table if it exists, None otherwise.
 
         Raises
         ------
         ValueError
             If `table_name` is not a valid identifier.
+        KeyError
+            If `table_name` is not in the loaders cache.
         """
         with Cache._lock:
             # critical section, accessing _loaders
             loader = Cache._loaders.get(table_name)
+            if loader is None:
+                raise KeyError(f"No cache found for loader '{table_name}'")
         return Cache.set(table_name, loader())
