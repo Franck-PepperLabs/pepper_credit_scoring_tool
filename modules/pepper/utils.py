@@ -1,4 +1,6 @@
-from typing import *
+from typing import (
+    Optional, Union, Any, Callable, List, Tuple, Dict
+)
 
 import os, time
 from sys import getsizeof
@@ -10,8 +12,8 @@ import calendar
 from itertools import zip_longest
 import re
 
-from IPython.display import display, clear_output, Markdown
-
+from IPython.display import display, clear_output
+from IPython.core.display import Markdown
 
 import numpy as np
 import pandas as pd
@@ -361,6 +363,8 @@ def show_discrete_stats(
     -------
     None
     """
+    if name is None:
+        name = data.columns.name
     stats = discrete_stats(data, name=name)
     display(stats)
     plot_discrete_stats(stats, precision, ratio)
@@ -462,9 +466,9 @@ def for_all(
 
     # Handle the case where only constant arguments are given
     if args_vect is None and kwargs_vect is None:
-        if const_args is None:
+        if const_args is None and const_kwargs is not None:
             return f(**const_kwargs)
-        if const_kwargs is None:
+        if const_kwargs is None and const_args is not None:
             return f(*const_args)
 
     # Apply the function to all combinations of variable and constant arguments
@@ -484,22 +488,29 @@ def for_all(
         return f(*new_args, **new_kwargs)
 
     results = None
-    if args_vect is None:
+    if args_vect is None and kwargs_vect is not None:
         results = [call_f(None, kwargs) for kwargs in kwargs_vect]
-    elif kwargs_vect is None:
+    elif kwargs_vect is None and args_vect is not None:
         results = [call_f(args, None) for args in args_vect]
-    else:
+    elif args_vect is not None and kwargs_vect is not None:
         results = [
             call_f(args, kwargs)
             for args, kwargs in zip(args_vect, kwargs_vect)
         ]
 
     # If the function returns a tuple, we zip the output
-    if len(results) > 0 and isinstance(results[0], tuple):
+    if (
+        results is not None
+        and len(results) > 0
+        and isinstance(results[0], tuple)
+    ):
         results = list(zip_longest(*results))
 
     # Returns nothing if f is clearly a procedure (never returns anything)
-    if not all([result is None for result in results]):
+    if (
+        results is not None
+        and not all([result is None for result in results])
+    ):
         return results
 
 
