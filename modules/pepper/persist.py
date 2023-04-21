@@ -37,7 +37,7 @@ def _get_filenames_glob(
     return filenames
 
 
-def all_to_parquet(datadict, dir, engine, compression):
+def all_to_parquet(datadict, dir, engine="pyarrow", compression="gzip"):
     create_if_not_exist(dir)
     for name, data in datadict.items():
         print(".", end="")

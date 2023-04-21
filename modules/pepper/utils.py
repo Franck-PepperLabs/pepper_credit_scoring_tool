@@ -114,33 +114,51 @@ def print_subsubtitle(txt: str) -> None:
     print(italic(green('\n' + txt)))
 
 
-def display_dataframe_in_markdown(data: pd.DataFrame) -> None:
+def display_key_val(key, val):
+    print(f"{bold(key)}: ", end="")
+    # TODO : complete with other type cases
+    if isinstance(val, int):
+        print(f"{val:n}")
+    else:
+        print(val)
+
+
+def display_dataframe_in_markdown(
+    data: pd.DataFrame,
+    show_index: bool = False
+) -> None:
     """Displays a DataFrame as a Markdown table.
 
     Parameters
     ----------
     data : pd.DataFrame
         The input DataFrame to display as a table in Markdown format.
+    show_index : bool, optional (default=False)
+        If True, display the index/indices of the DataFrame as a column(s).
 
     Returns
     -------
         None.
     """
+    strize = lambda s: [str(x) for x in s]
+    pipeize = lambda s: ("|" + "|".join(s) + "|").replace("None|", "_|")
+
+    data_cols = strize(data.columns.tolist())
+
     # Creating the table header row
-    header: str = "|".join(data.columns.tolist()) + "|"
-    separator: str = "|".join(["---"] * len(data.columns)) + "|"
+    index_cols = strize(data.index.names) if show_index else []
+    header_cols = index_cols + data_cols
+    header = pipeize(header_cols)
+    separator = pipeize(["-"] * len(header_cols))
 
     # Creating the subsequent rows
-    rows: List[str] = [
-        ("|".join([
-            str(x).replace("|", "\|")
-            for x in row._asdict().values()
-        ]) + "|").replace("|None|", "|_|")
-        for row in data.itertuples(index=False)
+    rows = [
+        pipeize(strize(row[0] + row[1:] if show_index else row))
+        for row in data.itertuples(index=show_index)
     ]
 
     # Combining the header, separator and rows to create the complete table
-    table: str = header + "\n" + separator + "\n" + "\n".join(rows)
+    table = "\n".join([header, separator] + rows)
 
     # Displaying the table in Markdown format
     display(Markdown(table))

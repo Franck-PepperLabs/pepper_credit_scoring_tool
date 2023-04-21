@@ -1,4 +1,4 @@
-from typing import Union, Any, List
+from typing import Union, Any, List, Tuple
 
 import pandas as pd
 import numpy as np
@@ -156,10 +156,19 @@ def row_rle(row: pd.Series) -> np.ndarray:
         An array of value and count pairs.
     """
     # Replace np.nan by "☗" and cast row in ndarray
-    row_a = row.fillna("☗").values
+    """true_dtype = row.dtype
+    tmp_dtype = true_dtype
+    if row.hasnans:
+        if row.dtype in [int, float]:
+            row = row.astype(object)
+            tmp_dtype = object
+        row.fillna("☗", inplace=True)"""
+    row = row.astype(object)
+    row.fillna("☗", inplace=True)
+    row_a = row.to_numpy() 
 
     # Find the locations of elements that are not equal to the previous one
-    # The additional True marks the end of sequence
+    # The additional `True` marks the end of sequence
     diff = np.concatenate(([True], row_a[:-1] != row_a[1:], [True]))
 
     # Calculate the count of each unique value using the diffs array
@@ -170,6 +179,59 @@ def row_rle(row: pd.Series) -> np.ndarray:
 
     # Replace "☗" by np.nan
     vals[vals == "☗"] = np.nan
+    """if row.dtype == object:
+        vals[vals == "☗"] = np.nan
+    else:
+        vals[vals == -1] = np.nan"""
 
     # Create and return an array of value and count pairs
     return np.column_stack((vals, lens))
+
+
+# Experimental 
+def vect_row_rle(*rows: List[pd.Series]) -> List[np.ndarray]:
+    """Reduces consecutive elements in a row to value and count pairs using
+    RLE.
+
+    Parameters
+    ----------
+    *rows : list of pandas Series
+        A list of rows of data, each represented as a pd.Series.
+
+    Returns
+    -------
+    List of ndarrays
+        A list of arrays of value and count pairs for each input row.
+    """
+    # Make sure all rows have the same length
+    row_length = len(rows[0])
+    assert_msg = "All rows must have the same length"
+    assert all(len(row) == row_length for row in rows), assert_msg
+
+    # Replace np.nan by "☗" and cast rows in ndarray
+    rows_with_fillna = [row for row in rows if hasattr(row, "fillna")]
+    rows_a = np.asarray(
+        [
+            row_with_fillna.fillna("☗").to_numpy()
+            for row_with_fillna in rows_with_fillna
+        ]
+    )
+
+    # Run-length encode the rows
+    diff = np.diff(rows_a, axis=1, prepend=1)
+    lens = np.diff(np.where(diff)[1], axis=1)
+    vals = rows_a[:, :-1][diff != 0]
+    rle = np.column_stack((vals, lens))
+
+    # Convert RLE to list of column stacks
+    num_rows = len(rows)
+    result = [None] * num_rows
+    current_idx = 0
+    for i, row in enumerate(rows):
+        if hasattr(row, "fillna"):
+            result[i] = rle[current_idx : current_idx + row_length]
+            current_idx += row_length
+        else:
+            result[i] = None
+    return result
+

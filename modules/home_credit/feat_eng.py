@@ -139,17 +139,20 @@ def divide_rle(
         start = 0
         end = rle.shape[0]
 
-        # Check if the RLE array starts with a closed frame and if so, add it to the count of closed frames
-        if rle[0][0] == "C":
+        # Check if the RLE array starts with a closed frame and if so,
+        # add it to the count of closed frames
+        if rle[0][0] in ["C", "☗"] or pd.isnull(rle[0][0]):
             n_closed = rle[0][1]
             start = 1
 
-        # Check if the RLE array ends with an empty frame and if so, add it to the count of untracked frames
-        if pd.isnull(rle[-1][0]):
+        # Check if the RLE array ends with an empty frame and if so,
+        # add it to the count of untracked frames
+        if rle[-1][0] in ["C", "☗"] or pd.isnull(rle[-1][0]):
             n_notrack = rle[-1][1]
             end = -1
         
-        # Extract the profile by slicing the RLE array, and compute the total number of tracked frames
+        # Extract the profile by slicing the RLE array,
+        # and compute the total number of tracked frames
         profile = rle[start:end]
         n_tracked = np.sum(profile[:, 1])
 
