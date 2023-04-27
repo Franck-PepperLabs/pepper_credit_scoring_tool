@@ -13,9 +13,11 @@ from pepper.utils import (
 )
 from pepper.pd_utils import subindex
 from pepper.db_utils import (
+    db_discrete_stats,
     out_of_intersection,
     display_is_in_A_but_not_in_B_heatmaps
 )
+
 # from pepper.univar import agg_value_counts
 # from pepper.feat_eng import reduce_long_tail
 from pepper.plots import lin_log_tetra_histplot   # show_cat_mod_counts, 
@@ -45,6 +47,64 @@ def help_cols(col_names=None, table_pat=None, desc_pat=None, spe_pat=None) -> No
     display_dataframe_in_markdown(descs[mask])
 
 
+def get_variables_description():
+    descs = get_table("columns_description").copy()
+    # Remove _{train|test} suffixes
+    descs.Table = descs.Table.str.replace("_{train|test}", "", regex=False)
+    return descs
+
+
+def get_variables_infos():
+    table_dict = {
+        table_name: get_table(table_name)
+        for table_name in get_table_names()
+    }
+    var_dstats = db_discrete_stats(table_dict)
+    var_descs = get_variables_description()
+    var_infos = pd.merge(
+        var_dstats, var_descs,
+        left_on=["table_name", "col"],
+        right_on=["Table", "Column"]
+    )
+    var_infos.drop(columns=["Table", "Column"], inplace=True)
+    var_infos.rename(columns={"table_name": "Table", "col": "Variable"}, inplace=True)
+
+    split_var_names = var_infos.Variable.str.split(pat="_", expand=True)
+    split_var_names.columns = [f"WORD_{i}" for i in range(5)]
+
+    return pd.concat([var_infos, split_var_names], axis=1)
+
+
+def _get_pat(group_name):
+    pat_map = {
+        "HOUSING_PROFILE": ".*_(AVG|MEDI|MODE)"
+    }
+    return pat_map.get(group_name)
+
+def get_variables_description(group_name):
+    pat = _get_pat(group_name)
+
+
+def help_variables(col_pat=None, table_pat=None, desc_pat=None, spe_pat=None) -> None:
+    # Get the column descriptions data table
+    descs = get_variables_description()
+    # Create a boolean mask that is True for every row
+    mask = pd.Series(True, index=descs.index)
+    # Modify the mask depending on pats
+    if col_pat is not None:
+        mask &= descs.Column.str.match(col_pat)
+    if table_pat is not None:
+        mask &= descs.Table.str.match(table_pat)
+    if desc_pat is not None:
+        mask &= descs.Description.str.match(desc_pat)
+    if spe_pat is not None:
+        mask &= descs.Special.str.match(spe_pat)
+    display_dataframe_in_markdown(descs[mask])
+
+
+
+
+
 def get_table_with_reminder(table_name):
     table = get_table(table_name)
     print_subtitle("Discrete stats")
@@ -52,6 +112,14 @@ def get_table_with_reminder(table_name):
     print_subtitle("Column descriptions")
     help_cols(table_pat=table_name)
     return table
+
+
+def get_table_names():
+    return [
+        "application", "bureau", "previous_application",
+        "bureau_balance", "pos_cash_balance",
+        "credit_card_balance", "installments_payments"
+    ]
 
 
 """ Home Credit business var types

@@ -1,4 +1,8 @@
 
+# Inspired bu and derived from :
+# https://www.kaggle.com/code/jsaguiar/lightgbm-with-simple-features
+# kaggle kernels output jsaguiar/lightgbm-with-simple-features -p /path/to/dest
+
 import time
 from contextlib import contextmanager
 import lightgbm as lgb
@@ -84,7 +88,7 @@ def one_hot_encode_all_cats(
     drop_first: bool = True,
     dtype: type = np.int8,
     sparse: bool = True,
-    discard_constants: bool = False
+    discard_constants: bool = True
 ) -> pd.DataFrame:
     """One-hot encode all categorical columns in the DataFrame.
 

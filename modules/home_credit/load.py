@@ -13,7 +13,7 @@ from pepper.persist import _get_filenames_glob
 from pepper.db_utils import set_pk_index, cast_columns
 
 
-def get_table_names() -> List[str]:
+def get_raw_table_names() -> List[str]:
     filenames = _get_filenames_glob(get_dataset_csv_dir(), "csv")
     return [filename[:-4] for filename in filenames]
 

@@ -26,7 +26,7 @@ def db_discrete_stats(table_dict):
     return pd.concat([
         table_discrete_stats(table_name, table)
         for table_name, table in table_dict.items()
-    ], axis=0)
+    ], axis=0, ignore_index=True)
 
 
 """ Indexing, casting
