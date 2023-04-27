@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 import pandas as pd
 import numpy as np
@@ -11,11 +11,17 @@ from pepper.utils import (
     discrete_stats,
     display_dataframe_in_markdown
 )
-from pepper.univar import agg_value_counts
-from pepper.feat_eng import reduce_long_tail
+from pepper.pd_utils import subindex
+from pepper.db_utils import (
+    out_of_intersection,
+    display_is_in_A_but_not_in_B_heatmaps
+)
+# from pepper.univar import agg_value_counts
+# from pepper.feat_eng import reduce_long_tail
+from pepper.plots import lin_log_tetra_histplot   # show_cat_mod_counts, 
 
 from home_credit.load import get_columns_description, get_table
-from home_credit.plots import show_cat_mod_counts
+# from home_credit.merge import targetize
 
 
 def help_cols(col_names=None, table_pat=None, desc_pat=None, spe_pat=None) -> None:
@@ -46,47 +52,6 @@ def get_table_with_reminder(table_name):
     print_subtitle("Column descriptions")
     help_cols(table_pat=table_name)
     return table
-
-
-""" Data blocks NB macros
-"""
-
-
-def get_datablock(data, pat):
-    return data[data.columns[data.columns.str.match(pat)]]
-
-
-def var_catdist_report(s, agg=True):
-    print_subtitle(s.name)
-    help_cols(s.name)
-    avc = agg_value_counts(s, agg=agg)
-    display(avc)
-    r = reduce_long_tail(s, agg=agg)
-    show_cat_mod_counts(r, order=avc.index) 
-
-
-def datablock_catdist_report(data, agg=True):
-    for cat in data.columns:
-        var_catdist_report(data[cat], agg=agg)
-
-
-import pandas as pd
-pd.options.display.float_format = "{:.3f}".format
-def expl_analysis_series(s):
-    return pd.Series({
-        "min": s.min(),
-        "max": s.max(),
-        "mean": s.mean(),
-        "med": s.median(),
-        "mod": s.mode()[0],
-        "var": s.var(),
-        "std": s.std(),
-        "skew": s.skew(),
-        "kurt": s.kurt(),
-    })
-
-def expl_analysis_df(df):
-    return df.apply(expl_analysis_series)
 
 
 """ Home Credit business var types
@@ -163,3 +128,112 @@ def display_frame_basic_infos(df: pd.DataFrame) -> None:
     """
     print(f"{bold('n_samples')}: {df.shape[0]:n}")
     print(f"{bold('n_columns')}: {df.shape[1]:n}, {get_column_types_dist(df)}")
+
+
+def foreign_key_counts_report(table_name: str, sk_name: str) -> None:
+    """Generates a report of the number of times each value of a foreign key
+    appears in a table. Displays a summary of the counts and a histogram of
+    their distribution.
+
+    Parameters
+    ----------
+    table_name : str
+        The name of the table to analyze.
+    sk_name : str
+        The name of the foreign key in the table.
+
+    Returns
+    -------
+    None
+    """
+    data = get_table(table_name)
+    sk_id = data[sk_name]
+    subidx = subindex(sk_id).subindex
+    sk_id_counts = subidx + 1
+    display(pd.DataFrame(sk_id_counts.describe()).T.astype(int))
+    lin_log_tetra_histplot(
+        sk_id_counts,
+        title=f"`{table_name}`:`{sk_name}` counts histogram"
+    )
+
+
+def main_subs_relation_report(
+    main_table_name: str,
+    subs_table_name: str,
+    sk_name: str
+) -> None:
+    """
+    Generates a report on the relationship between two tables.
+
+    Parameters
+    ----------
+    main_table_name : str
+        The name of the main table to be analyzed.
+    subs_table_name : str
+        The name of the subsidiary table to be analyzed.
+    sk_name : str
+        The name of the key which is the primary key in the main table and the 
+        foreign key in the subsidiary one.
+
+    Returns
+    -------
+    None
+        This function does not return anything.
+    """
+    _ = display_is_in_A_but_not_in_B_heatmaps({
+        main_table_name: get_table(main_table_name),
+        subs_table_name: get_table(subs_table_name)
+    }, sk_name)
+
+
+""" Relational
+"""
+
+
+def _not_in_subs_table_idx(
+    main_table_name: str,
+    subs_table_name: str,
+    key: str
+) -> np.ndarray:
+    """
+    Returns an array of primary keys that are not present in a subsidiary
+    table.
+
+    Parameters
+    ----------
+    main_table_name : str
+        Name of the main table.
+    subs_table_name : str
+        Name of the subsidiary table.
+    key : str
+        Name of the primary key column.
+
+    Returns
+    -------
+    np.ndarray
+        An array of primary keys that are not present in the subsidiary table.
+    """
+
+    # Find untracked primary keys from the main table compared to the subset
+    # table based on the key 
+    _, _, untracked_sk_id, _ = out_of_intersection(
+        get_table(main_table_name),
+        get_table(subs_table_name),
+        key
+    )
+    return untracked_sk_id
+
+
+""" Classif
+"""
+
+def get_class_label_name_map() -> Dict[int, str]:
+    """Gets a mapping between class labels and class names.
+
+    Returns:
+    --------
+    Dict[int, str]
+        A dictionary mapping class labels to class names.
+    """
+    #return dict(enumerate(get_product_categories().level_0.cat.categories)) [in P6]
+    return {-1: "Unknown", 0: "Negative", 1: "Positive"}

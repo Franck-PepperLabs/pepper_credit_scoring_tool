@@ -176,12 +176,14 @@ def count_of_objets_A_by_objet_B(
     return count_freq, gpby
 
 
-def out_of_intersection(
+def out_of_intersection_v1(
    table_A: pd.DataFrame,
    table_B: pd.DataFrame,
    pk_name: str
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Find the primary keys that are in one table but not the other.
+
+    DEPRECATED [Bad perf] Use `out_of_intersection` instead
 
     Parameters
     ----------
@@ -298,6 +300,44 @@ def display_relation_arities(
     return ab, ba, ab_min, ab_max, ba_min, ba_max
 
 
+""" P7 Revision
+"""
+
+
+def out_of_intersection(
+   table_A: pd.DataFrame,
+   table_B: pd.DataFrame,
+   pk_name: str
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Find the primary keys that are in one table but not the other.
+
+    Parameters
+    ----------
+    table_A : pd.DataFrame
+        First table.
+    table_B : pd.DataFrame
+        Second table.
+    pk_name : str
+        Name of the primary key column.
+
+    Returns
+    -------
+    pk_A : np.ndarray
+        Primary keys of `table_A`.
+    pk_B : np.ndarray
+        Primary keys of `table_B`.
+    pk_A_not_B : np.ndarray
+        Primary keys of `table_A` that are not in `table_B`.
+    pk_B_not_A : np.ndarray
+        Primary keys of `table_B` that are not in `table_A`.
+    """
+    pk_A = table_A[pk_name].drop_duplicates()
+    pk_B = table_B[pk_name].drop_duplicates()
+    pk_A_not_B = np.setdiff1d(pk_A, pk_B, assume_unique=True)
+    pk_B_not_A = np.setdiff1d(pk_B, pk_A, assume_unique=True)
+    return pk_A, pk_B, pk_A_not_B, pk_B_not_A
+
+
 def is_in_A_but_not_in_B_matrix(
     table_dict: Dict[str, pd.DataFrame],
     key: str,
@@ -330,15 +370,59 @@ def is_in_A_but_not_in_B_matrix(
         primary key column of the column table.
     """
     # Construct the unique series of the primary key in each table
+    # TODO : a priori, on fait ce qui va être fait par setdiff1d
+    # donc il n'est plus certain que ce soit une optimisation, peut être l'opposé
+    # timeit!
     pks = [t[key].drop_duplicates() for t in table_dict.values()]
 
     # Perform the asymmetric difference for each couple of tables
+    # TODO changer pour utiliser en une fois is_in_A_and_in_B_matrix si normalize = True
     return np.array([
         [
             (
                 np.setdiff1d(row_pk, col_pk, assume_unique=True).shape[0]
                 / (1 if not normalize else np.union1d(row_pk, col_pk).shape[0])
             )
+            for col_pk in pks
+        ]
+        for row_pk in pks
+    ])
+
+
+def is_in_A_and_in_B_matrix(
+    table_dict: Dict[str, pd.DataFrame],
+    key: str
+) -> np.ndarray:
+    """Calculates the matrix indicating the number of unique values in the
+    primary key column of each table that are present in the primary key column
+    of other tables. Returns the matrix as a NumPy array.
+
+    Parameters
+    ----------
+    table_dict : dict
+        A dictionary where the keys are table names (str) and the values are
+        the tables as pandas DataFrames.
+    key : str
+        The name of the primary key column that is common across all the
+        tables.
+
+    Returns
+    -------
+    numpy.ndarray
+        A matrix where the rows and columns correspond to the tables in
+        `table_dict`, and each entry indicates the number of unique values in
+        the primary key column of the row table that are present in the primary
+        key column of the column table.
+    """
+    # Construct the unique series of the primary key in each table
+    # TODO : mm rmq que ci-dessus
+    pks = [t[key].drop_duplicates() for t in table_dict.values()]
+
+    # Perform the symmetric union for each couple of tables
+    # TODO : optim : fait UP et en déduire DL puis diag
+    return np.array([
+        [
+            np.union1d(row_pk, col_pk).shape[0]
             for col_pk in pks
         ]
         for row_pk in pks
@@ -354,6 +438,8 @@ def display_is_in_A_but_not_in_B_heatmap(
     """Displays the heatmap indicating the number of unique values in the
     primary key column of each table that are not present in the primary
     key column of other tables.
+
+    DEPRECATED Use `display_is_in_A_but_not_in_B_heatmaps` instead
 
     Parameters
     ----------
@@ -374,9 +460,10 @@ def display_is_in_A_but_not_in_B_heatmap(
     Returns
     -------
     np.ndarray
-        The matrix of counts (or relative frequencies if `normalize=True`) where rows and columns 
-        correspond to tables and cells contain the count (or relative frequency) of occurrences 
-        where a primary key is in one table but not in another
+        The matrix of counts (or relative frequencies if `normalize=True`)
+        where rows and columns correspond to tables and cells contain the count
+        (or relative frequency) of occurrences where a primary key is in one
+        table but not in another
 
     Examples
     --------
@@ -407,6 +494,95 @@ def display_is_in_A_but_not_in_B_heatmap(
     # Save and show the plot
     save_and_show(f"{title.lower()}", sub_dir="corr")
     return mx
+
+
+# Les deux en un
+def display_is_in_A_but_not_in_B_heatmaps(
+    table_dict: Dict[str, pd.DataFrame],
+    key: str,
+    single_figsize: Tuple[float, float] = (3, 3),
+    ratio: float = 1.25
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Displays two heatmaps indicating the number and percentage of unique values
+    in the primary key column of each table that are not present in the primary
+    key column of other tables.
+
+    Parameters
+    ----------
+    table_dict : dict
+        A dictionary where the keys are table names (str) and the values are
+        the tables as pandas DataFrames.
+    key : str
+        The name of the primary key column that is common across all the
+        tables.
+    single_figsize : tuple of 2 float, optional
+        The size of each individual subplot, by default (3, 3).
+    ratio : float, optional
+        The aspect ratio of the figure, by default 1.25.
+
+    Returns
+    -------
+    Tuple of 2 np.ndarray
+        Two matrices of counts and relative frequencies where rows and columns
+        correspond to tables and cells contain the count or relative frequency
+        of occurrences where a primary key is in one table but not in another.
+
+    Examples
+    --------
+    >>> from pepper.utils import get_table
+    >>> from pepper.load import get_var_descs
+    >>> key = "SK_ID_CURR"
+    >>> var_descs = get_var_descs()
+    >>> table_names = var_descs[var_descs.Column == key].Table
+    >>> table_dict = {
+    >>>     table_name: get_table(table_name)
+    >>>     for table_name in table_names.values
+    >>> }
+    >>> display_is_in_A_but_not_in_B_heatmaps(table_dict, key)
+    """
+    # Set the title and subtitles
+    title = f"PK (`{key}`) relationship :\n“is in $A$ but not in $B$”"
+    subtitles = ["Counts", "Percents"]
+
+    # Define the ticklabels
+    ticklabels = {
+        "labels": table_dict.keys(),
+        "rotation": 30, "ha": "right", "rotation_mode": "anchor"
+    }
+
+    # Compute the matrices
+    mx = is_in_A_but_not_in_B_matrix(table_dict, key)
+    umx = is_in_A_and_in_B_matrix(table_dict, key)
+
+    # Create the figure and subplots
+    nrows, ncols = 1, 2
+    w, h = single_figsize
+    figsize = w*ncols*ratio, h*nrows*ratio
+    fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
+    axes = np.ravel(axes)
+
+    # Plot the heatmaps
+    heatmap_kws = {"annot": True, "annot_kws": {"size": 8}}
+    sns.heatmap(mx, fmt="n", ax=axes[0], **heatmap_kws)
+    sns.heatmap(100*mx/umx, fmt=".1f", ax=axes[1], **heatmap_kws)
+
+    # Complete the annotations
+    [t.set_text(t.get_text() + " %") for t in axes[1].texts]
+
+    # Set the ticklabels and subtitles
+    [ax.set_xticklabels(**ticklabels) for ax in axes]
+    [ax.set_yticklabels(**ticklabels) for ax in axes]
+    [ax.set_title(stl) for ax, stl in zip(axes, subtitles)]
+    plt.suptitle(title, fontsize=15)
+
+    # Adjust the spacing between the subplots and save/show the figure
+    fig.tight_layout()
+    save_and_show(f"{title.lower()}", sub_dir="corr")
+    
+    # Return the matrices
+    return mx, umx
+
 
 
 

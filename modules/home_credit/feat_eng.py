@@ -1,10 +1,14 @@
-from typing import Optional, Union, Tuple
+from typing import Optional, Union, Tuple, List
 
 import pandas as pd
 import numpy as np
 
 from pandas.api.types import is_numeric_dtype
+
 from pepper.feat_eng import nullify
+
+from home_credit.load import get_table
+from home_credit.utils import _not_in_subs_table_idx
 
 
 """ Missing values
@@ -104,8 +108,17 @@ def drop_no_last_app_rows(prev_app: pd.DataFrame) -> None:
     prev_app.drop(index=drop_index, inplace=True)
 
 
-""" `bureau_balance`
+""" `*_balance`
 """
+
+
+def eval_contracts_status(x):
+    if pd.isnull(x) or isinstance(x, int):
+        return np.nan
+    for prior in ["Active", "Signed", "Completed", "Demand"]:
+        if prior in x:
+            return prior
+    return x
 
 
 def divide_rle(
@@ -161,3 +174,93 @@ def divide_rle(
     
     # Return the results in a tuple
     return n_closed, n_tracked, n_notrack, profile
+
+
+""" Derived features
+"""
+
+
+def _is_in_subs_table(
+    main_table_name: str,
+    subs_table_name: str,
+    key: str
+) -> pd.Series:
+    """Determine whether a record from the main table is present in a
+    subsidiary table.
+
+    markdown
+
+    Parameters
+    ----------
+    main_table_name : str
+        Name of the main table.
+    subs_table_name : str
+        Name of the subsidiary table.
+    key : str
+        Name of the primary key column.
+
+    Returns
+    -------
+    pd.Series
+        A boolean series indicating whether a record is present in the
+        subsidiary table or not.
+    """
+    index = _not_in_subs_table_idx(main_table_name, subs_table_name, key)
+    return ~get_table(main_table_name)[key].isin(index)
+
+
+def is_in_ext(
+    key: str,
+    main_table_name: str,
+    subs_table_names: List[str],
+    var_names: Union[List[str], None] = None
+) -> pd.DataFrame:
+    """Returns a DataFrame containing new features indicating if a record is
+    present in each subsidiary table.
+
+    Parameters
+    ----------
+    key : str
+        Name of the primary key column shared by the main table and subsidiary
+        tables.
+    main_table_name : str
+        Name of the main table.
+    subs_table_names : List[str]
+        List of names of the subsidiary tables to check against.
+    var_names : Union[List[str], None], optional
+        List of names for the new columns indicating whether a record is
+        present in each table, by default None. If None, generate column names
+        automatically.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing new features indicating if a record is present
+        in each subsidiary table.
+    Examples
+    --------
+    >>> subs_table_names = [
+    >>>     "bureau", "previous_application", "pos_cash_balance",
+    >>>     "credit_card_balance", "installments_payments"
+    >>> ]
+    >>> app_is_in = is_in_ext("SK_ID_CURR", "application", subs_table_names)
+
+    """
+    """subs_table_names = [
+        "bureau", "previous_application", "pos_cash_balance",
+        "credit_card_balance", "installments_payments"
+    ]
+    var_names = ["in_B", "in_PA", "in_PCB", "in_CCB", "in_IP"]"""
+    if var_names is None:
+        var_names = [
+            f"in_{''.join([a[0].upper()for a in name.split('_')])}"
+            for name in subs_table_names
+        ]
+    return pd.concat(
+        [
+            _is_in_subs_table(main_table_name, subs_table_name, key)
+            .rename(var_name)
+            for subs_table_name, var_name in zip(subs_table_names, var_names)
+        ],
+        axis=1
+    )

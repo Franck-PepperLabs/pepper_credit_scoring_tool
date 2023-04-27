@@ -13,7 +13,7 @@ from itertools import zip_longest
 import re
 
 from IPython.display import display, clear_output
-from IPython.core.display import Markdown
+from IPython.core.display import Markdown, HTML
 
 import numpy as np
 import pandas as pd
@@ -140,7 +140,7 @@ def display_dataframe_in_markdown(
     -------
         None.
     """
-    strize = lambda s: [str(x) for x in s]
+    strize = lambda s: [str(x).replace("|", "\|") for x in s]
     pipeize = lambda s: ("|" + "|".join(s) + "|").replace("None|", "_|")
 
     data_cols = strize(data.columns.tolist())
@@ -181,7 +181,10 @@ def clean_filename(filename: str) -> str:
     str
         The cleaned string.
     """
-    return re.sub(r"[^\w\s-]", "", filename).replace(" ", "_").strip().lower()
+    return (
+        re.sub(r"[\r\n]+|[^\w\s-]", "", filename)
+        .strip().replace(" ", "_").lower()
+    )
 
 
 # Styled title
@@ -202,7 +205,6 @@ def save_and_show(file_name, sub_dir=None, file_ext="png", timestamp=True):
         file_ext = "." + file_ext
     if timestamp:
         file_name += datetime.now().strftime("_%Y_%m_%d_%H_%M_%S_%f")
-    print(f"save_and_show_savefig({dir}{file_name}{file_ext})")
     plt.savefig(
         f'{dir}{file_name}{file_ext}',
         #facecolor='white',
@@ -210,6 +212,13 @@ def save_and_show(file_name, sub_dir=None, file_ext="png", timestamp=True):
         dpi=300   # x 2
     )
     plt.show()
+    # print(f"save_and_show_savefig({dir}{file_name}{file_ext})")
+    file = f"{file_name}{file_ext}"
+    full_path = f"{dir}{file_name}{file_ext}"
+    display(HTML(
+        f"<b>save_and_show_savefig</b>: <a href='{full_path}')>{file}</a>"
+    ))
+
 
 
 """ Dataset discovery
@@ -322,7 +331,7 @@ def plot_discrete_stats(
     shannon_entropy = np.maximum(shannon_entropy * 100, precision)
 
     # Create stacked bar chart
-    _, ax1 = plt.subplots(figsize=(ratio * 8, 6))
+    _, ax1 = plt.subplots(figsize=(ratio * 8, 4))
     filling_rate.plot(kind="bar", stacked=True, color=["lightcoral", "lightgreen"], ax=ax1)
 
     #ax1 = filling_rate.plot(kind='bar', stacked=True, color=['lightcoral', 'lightgreen'])
