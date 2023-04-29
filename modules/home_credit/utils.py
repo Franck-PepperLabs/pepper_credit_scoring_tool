@@ -102,9 +102,6 @@ def help_variables(col_pat=None, table_pat=None, desc_pat=None, spe_pat=None) ->
     display_dataframe_in_markdown(descs[mask])
 
 
-
-
-
 def get_table_with_reminder(table_name):
     table = get_table(table_name)
     print_subtitle("Discrete stats")

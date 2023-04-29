@@ -1,5 +1,5 @@
+from IPython.display import display
 import pandas as pd
-
 from pepper.np_utils import subindex as npsi
 
 
@@ -113,11 +113,30 @@ def align_df2_on_df1(
 """
 
 def df_eq(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
-    return (df1.isnull() & df1.isnull()) | (df1 == df2)
+    try:
+        return (df1.isnull() & df1.isnull()) | (df1 == df2)
+    except ValueError as e:
+        print("DataFrames cannot be compared.")
+        print(f"Caught ValueError: {e}")
+        return pd.DataFrame([False])
 
 
 def df_neq(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
     return ~df_eq(df1, df2) 
+
+
+def check_dtypes_alignment(df1: pd.DataFrame, df2: pd.DataFrame) -> None:
+    try:
+        dtypes_diff = df1.dtypes != df2.dtypes
+        if (~dtypes_diff).all():
+            print("dtypes are aligned")
+        else:
+            print("dtypes diffs:")
+            display(df1.dtypes[dtypes_diff])
+            display(df2.dtypes[dtypes_diff])
+    except ValueError as e:
+        print("DataFrames cannot be compared.")
+        print(f"Caught ValueError: {e}")
 
 
 def replace_chars(s1: pd.Series, s2: pd.Series, default="") -> pd.Series:
