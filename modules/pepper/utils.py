@@ -192,6 +192,46 @@ def set_plot_title(title):
     plt.title(title, fontsize=15, weight="bold", pad=15)
 
 
+def display_file_link(
+    filepath: str,
+    desc: Optional[str] = None
+) -> None:
+    """Displays a clickable file link to the given file path.
+
+    Parameters
+    ----------
+    filepath : str
+        The file path to the file being linked to.
+    desc : Optional[str], default None
+        An optional description to add before the link.
+
+    Returns
+    -------
+    None
+        This function does not return anything, but displays the link in the
+        notebook.
+
+    Examples
+    --------
+    >>> display_file_link("path/to/my_file.txt")
+    Displays a clickable link to the file "my_file.txt".
+
+    >>> display_file_link("path/to/my_file.txt", "Link to my file")
+    Displays the text "Link to my file:"
+    followed by a clickable link to the file "my_file.txt".
+    """
+    filename = os.path.basename(filepath)
+    html = \
+    r"""<style>.nb-Link {{
+        font-family: var(--jp-ui-font-family)!important;
+        font-size: var(--jp-ui-font-size1)!important;
+    }}</style>"""
+    if desc is not None:
+        html += f"{desc}"
+    html += f"<a href='{filepath}')>{filename}</a>"
+    display(HTML(html))
+
+
 def save_and_show(file_name, sub_dir=None, file_ext="png", timestamp=True):
     file_name = clean_filename(file_name)
     root_dir = get_img_dir() + "/"   # "../img/"
@@ -213,11 +253,12 @@ def save_and_show(file_name, sub_dir=None, file_ext="png", timestamp=True):
     )
     plt.show()
     # print(f"save_and_show_savefig({dir}{file_name}{file_ext})")
-    file = f"{file_name}{file_ext}"
+    #file = f"{file_name}{file_ext}"
     full_path = f"{dir}{file_name}{file_ext}"
-    display(HTML(
-        f"<b>save_and_show_savefig</b>: <a href='{full_path}')>{file}</a>"
-    ))
+    display_file_link(full_path, "<b>Figure</b> saved 🔗 ")
+    #display(HTML(
+    #    f"<b>save_and_show_savefig</b>: <a href='{full_path}')>{file}</a>"
+    #))
 
 
 

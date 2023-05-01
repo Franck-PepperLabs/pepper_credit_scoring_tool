@@ -119,6 +119,13 @@ def get_table_names():
     ]
 
 
+def get_tables_dict():
+    return {
+        table_name: get_table(table_name)
+        for table_name in get_table_names()
+    }
+
+
 """ Home Credit business var types
 """
 

@@ -302,6 +302,7 @@ def kfold_lightgbm(df, num_folds, stratified = False, debug= False):
 
     print('Full AUC score %.6f' % roc_auc_score(train_df['TARGET'], oof_preds))
     # Write submission file and plot feature importance
+    submission_file_name = "../../tmp/submission/submission_kernel02.csv"  # The only add-on
     if not debug:
         test_df['TARGET'] = sub_preds
         test_df[['SK_ID_CURR', 'TARGET']].to_csv(submission_file_name, index= False)

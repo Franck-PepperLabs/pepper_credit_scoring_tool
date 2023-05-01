@@ -5,12 +5,13 @@
 from typing import Optional, List, Union, Dict, Iterable
 import os
 import pandas as pd
-from IPython.display import display
+# from IPython.display import display
 
 from pepper.cache import Cache
-from pepper.env import get_dataset_pqt_dir, get_dataset_csv_dir
+from pepper.env import get_dataset_pqt_dir, get_dataset_csv_dir, get_tmp_dir
 from pepper.persist import _get_filenames_glob
-from pepper.db_utils import set_pk_index, cast_columns
+from pepper.utils import create_if_not_exist, display_file_link
+# from pepper.db_utils import set_pk_index, cast_columns
 
 
 def get_raw_table_names() -> List[str]:
@@ -277,3 +278,67 @@ def get_table(table_name: str) -> pd.DataFrame:
         raise ValueError(
             f"Unknown `table_name` {table_name}"
         )
+
+
+def get_prep_dataset_dir() -> str:
+    """Returns the preprocessed dataset versions path.
+
+    Raises
+    ------
+    RuntimeError
+        If the `PROJECT_DIR` environment variable is not set.
+
+    Returns
+    -------
+    str
+        The project's preprocessed dataset versions path.
+    """
+    return os.path.join(get_tmp_dir(), "prep_dataset")
+
+
+# Saves the preprocessed dataset version
+def save_prep_dataset(data: pd.DataFrame, version_name: str) -> pd.DataFrame:
+    prep_dataset_dir = get_prep_dataset_dir()
+    create_if_not_exist(prep_dataset_dir)
+    filepath = os.path.join(
+        prep_dataset_dir,
+        f"prep_dataset_{version_name}.pqt"
+    )
+    data.to_parquet(filepath, engine="pyarrow", compression="gzip")
+
+
+# Loads the preprocessed dataset version
+def load_prep_dataset(version_name: str) -> pd.DataFrame:
+    prep_dataset_dir = get_prep_dataset_dir()
+    filepath = os.path.join(
+        prep_dataset_dir,
+        f"prep_dataset_{version_name}.pqt"
+    )
+    return pd.read_parquet(filepath, engine="pyarrow")
+
+
+def get_submission_dir() -> str:
+    """Returns the subsmission dir path.
+
+    Raises
+    ------
+    RuntimeError
+        If the `PROJECT_DIR` environment variable is not set.
+
+    Returns
+    -------
+    str
+        The project's subsmission dir path.
+    """
+    return os.path.join(get_tmp_dir(), "submission")
+
+
+def save_submission(sms_data: pd.DataFrame, sms_filename: str):
+    submission_dir = get_submission_dir()
+    create_if_not_exist(submission_dir)
+    filepath = os.path.join(submission_dir, sms_filename)
+    sms_data.to_csv(filepath, index=False)
+    display_file_link(filepath, "<b>Submission file</b> saved 🔗 ")
+    # display(HTML(
+    #    f"<b>save_and_show_savefig</b>: <a href='{filepath}')>{sms_filename}</a>"
+    #))

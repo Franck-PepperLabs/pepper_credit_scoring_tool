@@ -27,10 +27,20 @@ import lightgbm as lgbm
 from sklearn.model_selection import KFold, StratifiedKFold
 from sklearn.metrics import roc_auc_score
 
-""" Never do this, it's a very bad habit!
 import warnings
-warnings.filterwarnings(action="ignore", category=UserWarning)
-warnings.simplefilter(action="ignore", category=FutureWarning)
+
+"""**Note** Never use this practice, it's a very bad habit!
+
+>>> import warnings
+>>> warnings.filterwarnings(action="ignore", category=UserWarning)
+>>> warnings.simplefilter(action="ignore", category=FutureWarning)
+
+Instead, prefer targeted muting, for instance:
+
+>>> warnings.filterwarnings(
+>>>     "ignore", message=".'verbose' argument is deprecated.",
+>>>     category=DeprecationWarning
+>>> )
 """
 
 # Home imports
@@ -39,12 +49,15 @@ from pepper.utils import save_and_show, pretty_timedelta_str
 from pepper.pd_utils import align_df2_on_df1  # For `load_IP_table` in `silly_mode`
 
 from home_credit.utils import get_table
+from home_credit.load import save_submission
 from home_credit.feat_eng import nullify_365243
 from home_credit.lightgbm_kernel import one_hot_encoder  # For compatibility check
 
 
 def free(*objs: object) -> None:
     """Frees memory used by objects and garbage collect.
+
+    DEPRECATED Not pythonic
 
     Parameters
     ----------
@@ -372,7 +385,7 @@ def flatten_and_prefix_columns(data: pd.DataFrame, prefix: str = None) -> None:
 
 
 
-def display_importances(feat_imp: pd.DataFrame, title: str = None) -> None:
+def display_importances(feat_imp: pd.DataFrame, title: str = None) -> pd.DataFrame:
     """Displays a bar plot of feature importance.
 
     Parameters
@@ -384,31 +397,52 @@ def display_importances(feat_imp: pd.DataFrame, title: str = None) -> None:
 
     Returns
     -------
-        None
+    The selected and ordered best features
     """
-    # Get the top 40 features by importance
-    cols = (
+    # Group and sort the features by importance
+    best_features = (
         feat_imp[["feature", "importance"]]
         .groupby("feature").mean()
         .sort_values(by="importance", ascending=False)
-        [:40].index
+    )
+    best_features.reset_index(inplace=True)
+
+    # Shorten feature names longer than 30 characters
+    best_features.feature = best_features.feature.apply(
+        lambda x: x if len(x) <= 30 else f"{x[:15]}(...){x[-15:]}"
     )
 
-    # Sort the features by importance and get the best ones
-    best_features = (
-        feat_imp.loc[feat_imp.feature.isin(cols)]
-        .sort_values(by="importance", ascending=False)
-    )
-
-    # Create the plot
+    # Create the plot of the 40 best features
     plt.figure(figsize=(8, 10))
-    sns.barplot(x="importance", y="feature", data=best_features)
-    plt.title('LightGBM Features (avg over folds)')
+    ax = sns.barplot(x="importance", y="feature", data=best_features[:40])
+
+    # Set the title
+    title = "" if title is None else title
+    plt.title(
+        f"{title}{'' if title == '' else ' '}"
+        "LightGBM Features importance (avg over folds)",
+        fontsize=14, fontweight="bold"
+    )
+
+    # Remove the labels from the axes
+    plt.xlabel("")
+    plt.ylabel("")
+
+    # Duplicate the xticks label to the top of the figure
+    ax.xaxis.set_tick_params(labeltop=True, labelbottom=True)
+    ax.tick_params(axis="x", labelsize=10)
+
+    # Make the grid lines as light as possible
+    plt.grid(axis="x", linestyle=":", alpha=0.5)
 
     # Adjust the spacing between the subplots and save/show the figure
+    # plt.subplots_adjust(left=0.4)
     plt.tight_layout()
-    title = "default" if title is None else title
+
+    # Save and show the figure
     save_and_show(f"feature_importace_{title.lower()}", sub_dir="feat_imp")
+
+    return best_features
 
 
 """ V1 vs V2
@@ -1232,7 +1266,7 @@ def preproc_installments_payments(
 
 def get_preproc_table_func(
     adj_table_name: str,
-    version: Optional[Union[int, None]] = None
+    version: Optional[Union[int, str, None]] = None
 ) -> callable:
     """Returns the corresponding preprocessing function for a given table name.
 
@@ -1240,10 +1274,11 @@ def get_preproc_table_func(
     ----------
     adj_table_name : str
         The subtable to be joint to the main left one.
-    version : Optional[Union[int, None]]
+    version : Optional[Union[int, st, None]]
         The version of code to use: 1, 2, 3, or None (which defaults to 3).
         1 refers to the original version, 2 to the enhanced original version,
         and None or 3 refers to our fully derived version.
+        TODO : à revoir : "baseline_v1", "baseline_v2", "freestyle_A", etc
     """
     if version == 1:
         name_func_map = {
@@ -1263,7 +1298,7 @@ def get_preproc_table_func(
             "credit_card_balance": credit_card_balance_v2,
             "installments_payments": installments_payments_v2
         }
-    else:    
+    else:  # if version == "freestyle_A"  
         name_func_map = {
             "application": preproc_application,
             "bureau": preproc_bureau,
@@ -1383,28 +1418,48 @@ def main_preproc(
     return data
 
 
-def get_opt_lgbm_classifier() -> lgbm.LGBMClassifier:
+def get_opt_lgbm_classifier(verbosity: int = 0) -> lgbm.LGBMClassifier:
     """Returns a LightGBM classifier with optimal parameters found
     by Bayesian optimization."""
     # Parameters from Tilii kernel:
     # https://www.kaggle.com/tilii7/olivier-lightgbm-parameters-by-bayesian-opt/code
-    stopping_rounds = 15  # [10, 20]
-    return lgbm.LGBMClassifier(
-        nthread=4,
-        n_estimators=10000,
-        learning_rate=0.02,
-        num_leaves=34,
-        colsample_bytree=0.9497036,
-        subsample=0.8715623,
-        max_depth=8,
-        reg_alpha=0.041545473,
-        reg_lambda=0.0735294,
-        min_split_gain=0.0222415,
-        min_child_weight=39.3259775,
-        silent=-1,
-        verbose=-1,
-        # See : https://lightgbm.readthedocs.io/en/latest/Parameters.html
+
+    # Ignore warnings related to verbose and early_stopping_rounds
+    warnings.filterwarnings(
+        "ignore", message=".*'verbose' argument is deprecated.*",
+        category=UserWarning
     )
+    warnings.filterwarnings(
+        "ignore", message=".*'early_stopping_rounds' argument is deprecated.*",
+        category=UserWarning
+    )
+
+    # Define the model parameters
+    model_params = {
+        # nthread=4,
+        "n_jobs": 4,
+        "n_estimators": 10_000,
+        "learning_rate": .02,
+        "num_leaves": 34,
+        "colsample_bytree": .9497036,
+        "subsample": .8715623,
+        "max_depth": 8,
+        "reg_alpha": .041545473,
+        "reg_lambda": .0735294,
+        "min_split_gain": .0222415,
+        "min_child_weight": 39.3259775,
+        # "silent=-1,
+        # "verbose": -1,   # derecated, replaced by `callback`
+        # "early_stopping_rounds": None,
+        # Use LGBMCallback for verbosity
+        "callbacks": [
+            lgbm.callbacks.LGBMCallback(logging_frequency=verbosity)
+        ] if verbosity > 0 else None,
+        # "stopping_rounds": 15,  # [10, 20]
+        # See : https://lightgbm.readthedocs.io/en/latest/Parameters.html
+    }
+
+    return lgbm.LGBMClassifier(**model_params)
 
 
 # LightGBM GBDT with KFold or Stratified KFold
@@ -1413,7 +1468,8 @@ def kfold_lightgbm(
     nfolds: int,
     stratified: bool = False,
     debug: bool = False,
-    sms_filename: str = "submission_kernel.csv"
+    sms_filename: str = "submission_kernel.csv",
+    # force_gc: bool = False
 ) -> pd.DataFrame:
     """Trains a LightGBM Gradient Boosting Decision Tree model using KFold or
     Stratified KFold cross-validation.
@@ -1431,31 +1487,38 @@ def kfold_lightgbm(
     sms_filename : str, optional
         The filename of the submission file to write.
         Defaults to "submission_kernel.csv"
+    # force_gc : bool, optional
+    #     Whether to force garbage collection as soon as an object is no longer
+    #     needed. Defaults to False.
 
     Returns
     -------
         A DataFrame containing the feature importances.
     """
-    # Exclude some non-feature columns from train and test data
+    # Exclude non-feature columns from training and test features
     not_feat_names = ["TARGET", "SK_ID_CURR", "SK_ID_BUREAU", "SK_ID_PREV", "index"]
     feat_names = data.columns.difference(not_feat_names)
     X = data[feat_names]
     y = data.TARGET
+    id = data.SK_ID_CURR
 
-    # Get the target variable and the features for training and test data
+    # Split the target variable and the features for training and test data
     X_train = X[y > -1].copy()
-    X_test = X[y == -1].copy()
     y_train = y[y > -1].copy()
-    y_test = y[y == -1].copy()
+    X_test = X[y == -1].copy()
+    id_test = id[y == -1].copy()
+    # y_test = y[y == -1].copy() aucun intérêt
 
     # Print the shape of the training and test data
     print(f"Starting LightGBM. Train shape: {X_train.shape}, test shape: {X_test.shape}")
     
-    # Cross validation model
+    # Create the cross-validation model
     fold_params = {"n_splits": nfolds, "shuffle": True, "random_state": 42}
-    folds = (StratifiedKFold if stratified else KFold)(*fold_params)
+    folds = (StratifiedKFold if stratified else KFold)(**fold_params)
     
     # Create arrays and dataframes to store results
+    # `oof_preds` will store the out-of-fold predictions for the training data
+    # `sms_preds` will store the submission predictions for the test data 
     oof_preds = np.zeros(X_train.shape[0])
     sms_preds = np.zeros(X_test.shape[0])
 
@@ -1482,7 +1545,7 @@ def kfold_lightgbm(
             num_iteration=clf.best_iteration_
         )[:, 1]
 
-        # Aggregate the submission predictions for the current fold
+        # Aggregate the submission predictions (test predictions) for the current fold
         sms_preds += clf.predict_proba(
             X_test,
             num_iteration=clf.best_iteration_
@@ -1499,26 +1562,42 @@ def kfold_lightgbm(
         fold_imps.append(fold_imp)
 
         # Print the AUC for the current fold
-        print(
-            f"Fold {n_fold+1:2d} - "
-            f"AUC : {roc_auc_score(y_valid, oof_preds[valid_idx]):.6f}"
+        # Avoid ValueError:
+        #   Only one class present in y_true. ROC AUC score is not defined in that case.
+        if y_valid.nunique() > 1:
+            kv(2,
+               f"Fold {n_fold+1:2d} AUC",
+               f"{roc_auc_score(y_valid, oof_preds[valid_idx]):.6f}"
+            )
+        else:
+            print("Only one class present in `y_valid`. "
+                  "ROC AUC score is not defined in that case.")
+
+    # Print the overall train AUC
+    if y_train.nunique() > 1:
+        kv(2,
+            f"Full AUC score",
+            f"{roc_auc_score(y_train, oof_preds):.6f}"
         )
-
-        # Free up memory
-        free(clf, *X_y_train, *X_y_valid)
-
-    print(f"Full AUC score {roc_auc_score(y_test, oof_preds):.6f}")
+    else:
+        print("Only one class present in `y_train`. "
+              "ROC AUC score is not defined in that case.")
     
-    # Write submission file and plot feature importance
+    # Write the submission file
     if not debug:
-        y_test = sms_preds
-        X_test[["SK_ID_CURR", "TARGET"]].to_csv(sms_filename, index=False)
+        sms_data = id_test.reset_index()
+        sms_data["TARGET"] = sms_preds
+        save_submission(sms_data, sms_filename)
 
     # Concatenate the feature importances across all folds
     feat_imp = pd.concat(fold_imps, axis=0)
 
-    # Display the feature importances
+    # Display the feature importance
     display_importances(feat_imp)
+
+    # Force the garbage collection : the author must be a Java or C++ programmer
+    # if force_gc:
+    #     free(clf, X_train, X_test, y_train, y_test)
 
     # And return it
     return feat_imp
@@ -1562,7 +1641,6 @@ def safe_utf8_column_names(data: pd.DataFrame) -> None:
     data.rename(columns=dict(zip(data.columns, clean_cols)), inplace=True)
 
 
-
 def main(
     nrows: Optional[Union[int, None]] = None,
     version: Optional[Union[int, None]] = None,
@@ -1596,7 +1674,7 @@ def main(
     verbosity = max(1, verbosity) if debug else verbosity
     params = nrows, version, verbosity
 
-    data = main_preproc(data, *params)
+    data = main_preproc(*params)
 
     kfold_lightgbm_inputs = {
         "data": data,

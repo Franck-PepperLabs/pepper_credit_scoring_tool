@@ -22,9 +22,9 @@ def tx(verbosity: int, text: str) -> None:
     subtitle : str
         The text to print.
     """
-    if verbosity is None:
+    if verbosity is None or verbosity < 1:
         return
-    if verbosity > 1:
+    elif verbosity > 0:
         display(text)
 
 
@@ -38,9 +38,9 @@ def kv(verbosity: int, key: str, val: str) -> None:
     subtitle : str
         The text to print.
     """
-    if verbosity is None:
+    if verbosity is None or verbosity < 1:
         return
-    if verbosity > 1:
+    elif verbosity > 0:
         display_key_val(key, val)
 
 
@@ -58,7 +58,7 @@ def tl(verbosity: int, title: str) -> None:
     if verbosity is None or verbosity < 1:
         return
     elif verbosity == 1:
-        display(title)
+        print(title)
     elif verbosity == 2:
         print_subsubtitle(title)
     elif verbosity == 3:
