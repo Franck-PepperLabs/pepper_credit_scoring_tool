@@ -108,7 +108,7 @@ def show_confusion_matrix(
     >>> ax.yaxis.set_ticklabels(cla_names)
     >>> _ = ax.set_title(f"Confusion Matrix")
     """
-    print_subtitle("Confusion matrix")
+    # print_subtitle("Confusion matrix")
     conf_mx = metrics.confusion_matrix(cla_labels, clu_labels)
     cla_names = [
         cln[:13] + ("..." if len(cln) > 16 else cln[13:16])

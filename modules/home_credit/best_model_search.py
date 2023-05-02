@@ -103,7 +103,7 @@ def get_feat_imp_facade(clf):  # clf.feature_importances_,
         return clf.feature_importances_
     elif isinstance(clf, skl.linear_model.LogisticRegression):
         return clf.coef_[0]
-    # TOCO : Pour le dummy, on peut dire que les features ont une importance égale
+    # TODO : Pour le dummy, on peut dire que les features ont une importance égale
     else:
         print("Error: Unsupported classifier type")
 

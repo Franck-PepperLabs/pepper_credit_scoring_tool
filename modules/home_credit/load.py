@@ -317,20 +317,20 @@ def load_prep_dataset(version_name: str) -> pd.DataFrame:
     return pd.read_parquet(filepath, engine="pyarrow")
 
 
+def _get_tmp_subdir(dir_name: str) -> str:
+    dir = os.path.join(get_tmp_dir(), dir_name)
+    create_if_not_exist(dir)
+    return dir 
+
 def get_submission_dir() -> str:
-    """Returns the subsmission dir path.
+    return _get_tmp_subdir("submission")
 
-    Raises
-    ------
-    RuntimeError
-        If the `PROJECT_DIR` environment variable is not set.
 
-    Returns
-    -------
-    str
-        The project's subsmission dir path.
-    """
-    return os.path.join(get_tmp_dir(), "submission")
+def get_mlflow_dir() -> str:
+    return _get_tmp_subdir("mlruns")
+
+def get_reports_dir() -> str:
+    return _get_tmp_subdir("reports")
 
 
 def save_submission(sms_data: pd.DataFrame, sms_filename: str):
@@ -339,6 +339,4 @@ def save_submission(sms_data: pd.DataFrame, sms_filename: str):
     filepath = os.path.join(submission_dir, sms_filename)
     sms_data.to_csv(filepath, index=False)
     display_file_link(filepath, "<b>Submission file</b> saved 🔗 ")
-    # display(HTML(
-    #    f"<b>save_and_show_savefig</b>: <a href='{filepath}')>{sms_filename}</a>"
-    #))
+
