@@ -50,18 +50,24 @@ def default_imputation(data: pd.DataFrame) -> pd.DataFrame:
     A pandas DataFrame with imputed values.
     """
     # Replace infinite values with NaN
+    print("DBG default_imputation data.shape:", data.shape)
     data = data.replace([np.inf, -np.inf], np.nan) # here a bad idea: , inplace=True)
+    print("DBG default_imputation data.shape:", data.shape)
     
     # Separate training and test data
     data_train = data[data.TARGET > -1]
-    
+    print("DBG default_imputation data_train.shape:", data_train.shape)
+
     # Fit the imputer on the training data only
     imp_median = SimpleImputer(missing_values=np.nan, strategy='median')
     imp_median.fit(data_train)
     
+    new_data = imp_median.transform(data)
+    print("DBG default_imputation new_data.shape:", new_data.shape)
+
     # Impute missing values in the entire dataset
     return pd.DataFrame(
-        imp_median.transform(data),
+        new_data,
         columns=data.columns, index=data.index
     )
 
@@ -137,8 +143,9 @@ def require_probas(metric: Callable) -> bool:
     ]
 
 
-def train_preproc(data, scaler):
-    data_train = data[data.TARGET > -1]
+def train_preproc(data, scaler, keep_test_samples=False):
+    data_train = data if keep_test_samples else data[data.TARGET > -1]
+    print("DBG data_train.shape:", data_train.shape)
     data_train = default_imputation(data_train)
 
     # Exclude non-feature columns from training and test features
@@ -148,8 +155,6 @@ def train_preproc(data, scaler):
     y = data_train.TARGET
 
     # Scale the data
-    # scaler = skl.preprocessing.MinMaxScaler()
-
     if scaler is not None:
         scaler.fit(X)
         X = pd.DataFrame(
@@ -1167,12 +1172,5 @@ def post_train_eval(
     cm = metrics.confusion_matrix(y_rv, y_rv_pred)  # pour alimenter mlflow en post traitement
     return (
         main_image_filepath, final_roc_filepath, final_conf_filepath,
-        auc_rs, auc_s, auc, auc_v, auc_rv,
-        cm
-        # TODO :
-        # matrice de confusion => FN/TN, FP/TP,
-        # et temps de cette éval
-        # pour enregistrement dans mlflow
-        # plus enregistrement du modèle
-        # tester sur le cas de la forêt aléatoire
+        auc_rs, auc_s, auc, auc_v, auc_rv, cm
     )

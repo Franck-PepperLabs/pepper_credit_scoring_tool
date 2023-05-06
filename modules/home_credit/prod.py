@@ -214,3 +214,13 @@ def save_report(report: Report, report_name: str) -> None:
             f"{report_name}.html"
     ))
 
+
+def get_most_important_features():
+    # LGBM's
+    return [
+        "EXT_SOURCE_2", "EXT_SOURCE_3", "PAYMENT_RATE", "EXT_SOURCE_1",
+        "CODE_GENDER_M", "DAYS_BIRTH", "DAYS_ID_PUBLISH", "AMT_ANNUITY",
+        "APPROVED_CNT_PAYMENT_MEAN", "DAYS_REGISTRATION", "NAME_FAMILY_STATUS_Married",
+        "DAYS_LAST_PHONE_CHANGE", "DAYS_EMPLOYED", "INSTAL_DAYS_ENTRY_PAYMENT_MAX",
+        "ANNUITY_INCOME_PERC", "REGION_POPULATION_RELATIVE"
+    ]
