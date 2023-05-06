@@ -232,7 +232,7 @@ def display_file_link(
     display(HTML(html))
 
 
-def save_and_show(file_name, sub_dir=None, file_ext="png", timestamp=True):
+def save_and_show(file_name, sub_dir=None, file_ext="png", timestamp=True, return_filepath=False):
     file_name = clean_filename(file_name)
     root_dir = get_img_dir() + "/"   # "../img/"
     sub_dir = sub_dir if sub_dir else ""
@@ -256,9 +256,8 @@ def save_and_show(file_name, sub_dir=None, file_ext="png", timestamp=True):
     #file = f"{file_name}{file_ext}"
     full_path = f"{dir}{file_name}{file_ext}"
     display_file_link(full_path, "<b>Figure</b> saved 🔗 ")
-    #display(HTML(
-    #    f"<b>save_and_show_savefig</b>: <a href='{full_path}')>{file}</a>"
-    #))
+    if return_filepath:
+        return full_path
 
 
 

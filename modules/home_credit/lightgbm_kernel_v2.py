@@ -420,7 +420,7 @@ def display_importances(feat_imp: pd.DataFrame, title: str = None) -> pd.DataFra
     title = "" if title is None else title
     plt.title(
         f"{title}{'' if title == '' else ' '}"
-        "LightGBM Features importance (avg over folds)",
+        "Features importance (avg over folds)",
         fontsize=14, fontweight="bold"
     )
 
