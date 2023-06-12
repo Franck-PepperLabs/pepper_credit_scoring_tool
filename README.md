@@ -1,3 +1,21 @@
+# Data Project Steps
+
+This project follows a structured approach, organized into different phases within the `notebooks/` directory. Each phase represents a specific stage in the data analysis and modeling process.
+
+By following this systematic workflow, the project progresses through each phase, covering essential steps from data acquisition to advanced modeling and evaluation. Each notebook within the respective phase folder provides a clear progression in the project's data-driven journey.
+
+## Phase 1: Data Acquisition and Preprocessing
+
+The first phase, preceding the Exploratory Data Analysis (EDA), focuses on _data acquisition and preprocessing_. It involves gathering data from various sources, including APIs and web scraping. The collected data is then subjected to initial cleaning and preprocessing steps to ensure its quality and prepare it for further analysis. This phase sets the foundation for the subsequent EDA and feature engineering stages.
+
+The collection of notebooks that cover this phase is stored in the `notebooks/dp/` directory, where `dp` refers to the two most commonly used expressions to describe this phase, namely "Data Preparation" or "Data Processing".
+
+# Notebooks
+
+## Data Format Conversion: `notebooks/dp/csv_to_parquet.ipynb`
+
+This notebook focuses on converting the dataset from CSV to Parquet format to enhance performance. We assess the efficiency of Parquet and CSV formats in terms of speed, disk space, and data compression. The objective is to identify the optimal format for EDA and feature engineering and carry out the necessary conversion.
+
 # Préambule général
 
 ## La modularité à l'ère des notebooks
