@@ -78,27 +78,27 @@ print_subtitle(txt):
 """
 
 
-def bold(s: str) -> str:
+def bold(s: object) -> str:
     return "\033[1m" + str(s) + "\033[0m"
 
 
-def italic(s: str) -> str:
+def italic(s: object) -> str:
     return "\033[3m" + str(s) + "\033[0m"
 
 
-def cyan(s: str) -> str:
+def cyan(s: object) -> str:
     return "\033[36m" + str(s) + "\033[0m"
 
 
-def magenta(s: str) -> str:
+def magenta(s: object) -> str:
     return "\033[35m" + str(s) + "\033[0m"
 
 
-def red(s: str) -> str:
+def red(s: object) -> str:
     return "\033[31m" + str(s) + "\033[0m"
 
 
-def green(s: str) -> str:
+def green(s: object) -> str:
     return "\033[32m" + str(s) + "\033[0m"
 
 
@@ -235,18 +235,18 @@ def display_file_link(
 def save_and_show(file_name, sub_dir=None, file_ext="png", timestamp=True, return_filepath=False):
     file_name = clean_filename(file_name)
     root_dir = get_img_dir() + "/"   # "../img/"
-    sub_dir = sub_dir if sub_dir else ""
+    sub_dir = sub_dir or ""
     if len(sub_dir) > 0 and sub_dir[-1] != "/":
         sub_dir += "/"
-    dir = root_dir + sub_dir
-    create_if_not_exist(dir)
-    file_ext = file_ext if file_ext else "png"
+    path = root_dir + sub_dir
+    create_if_not_exist(path)
+    file_ext = file_ext or "png"
     if len(file_ext) > 0 and file_ext[0] != ".":
         file_ext = "." + file_ext
     if timestamp:
         file_name += datetime.now().strftime("_%Y_%m_%d_%H_%M_%S_%f")
     plt.savefig(
-        f'{dir}{file_name}{file_ext}',
+        f'{path}{file_name}{file_ext}',
         #facecolor='white',
         bbox_inches='tight',
         dpi=300   # x 2
@@ -254,7 +254,7 @@ def save_and_show(file_name, sub_dir=None, file_ext="png", timestamp=True, retur
     plt.show()
     # print(f"save_and_show_savefig({dir}{file_name}{file_ext})")
     #file = f"{file_name}{file_ext}"
-    full_path = f"{dir}{file_name}{file_ext}"
+    full_path = f"{path}{file_name}{file_ext}"
     display_file_link(full_path, "<b>Figure</b> saved 🔗 ")
     if return_filepath:
         return full_path
@@ -303,7 +303,7 @@ def discrete_stats(
     """
     if not isinstance(data, pd.DataFrame):
         raise TypeError("Input data should be a pandas DataFrame.")
-    
+
     n = data.count()
     n_u = data.nunique()
     n_na = data.isna().sum()
@@ -316,12 +316,7 @@ def discrete_stats(
         'dtypes': data.dtypes
     }, index=list(data.columns))
 
-    if name is not None:
-        # stats.index.names = [name]
-        stats.index.name = name
-    else:
-        stats.index.name = data.index.name
-
+    stats.index.name = name if name is not None else data.index.name
     return stats
 
 
@@ -331,7 +326,7 @@ def plot_discrete_stats(
     precision: float = .1,
     ratio: float = 1.0
 ) -> None:
-    """Plot a stacked bar chart and a scatter plot of the input data.
+    """Plots a stacked bar chart and a scatter plot of the input data.
 
     Parameters
     ----------
@@ -412,7 +407,7 @@ def show_discrete_stats(
     precision: float = .1,
     ratio: float = 1.0
 ) -> None:
-    r"""Show the discrete statistics of a Pandas DataFrame and plot them.
+    """Shows the discrete statistics of a Pandas DataFrame and plot them.
 
     Parameters
     ----------
@@ -442,7 +437,7 @@ def show_discrete_stats(
 
 
 def create_if_not_exist(dir: str) -> None:
-    r"""Create a directory if it doesn't already exist.
+    """Creates a directory if it doesn't already exist.
 
     Parameters
     ----------
@@ -464,7 +459,7 @@ def for_all(
     const_args: Optional[Tuple[Any, ...]] = None,
     const_kwargs: Optional[Dict[str, Any]] = None
 ) -> Union[None, Any, List[Any]]:
-    r"""Apply a function to a vector of arguments and/or keyword arguments.
+    """Applies a function to a vector of arguments and/or keyword arguments.
 
     If `args_vect` and `kwargs_vect` are provided, apply
     `f(*args_vect[i], **kwargs_vect[i])` to each corresponding pair
@@ -574,10 +569,7 @@ def for_all(
         results = list(zip_longest(*results))
 
     # Returns nothing if f is clearly a procedure (never returns anything)
-    if (
-        results is not None
-        and not all([result is None for result in results])
-    ):
+    if results is not None and any(result is not None for result in results):
         return results
 
 
@@ -586,9 +578,9 @@ def for_all(
 """
 
 
-# TODO : A DEPR : NB > j'ai repéré une fonction de ce type dans Dask
+# TODO: DEPRECATE: Note > I have identified a similar function in Dask.
 def format_iB(n_bytes: int) -> Tuple[float, str]:
-    r"""Return a tuple with the amount of memory and its unit in bytes.
+    """Returns a tuple with the amount of memory and its unit in bytes.
 
     Parameters
     ----------
@@ -617,7 +609,7 @@ def format_iB(n_bytes: int) -> Tuple[float, str]:
 
 
 def print_memory_usage(data: pd.DataFrame) -> None:
-    r"""Prints the memory usage of a pandas DataFrame.
+    """Prints the memory usage of a pandas DataFrame.
 
     Parameters
     ----------
@@ -631,7 +623,7 @@ def print_memory_usage(data: pd.DataFrame) -> None:
 
 
 def get_file_size(file_path: str) -> int:
-    r"""Returns the size of a file in bytes.
+    """Returns the size of a file in bytes.
 
     Parameters
     ----------
@@ -647,7 +639,7 @@ def get_file_size(file_path: str) -> int:
 
 
 def print_file_size(file_path: str) -> None:
-    r"""Print the size of a file in bytes.
+    """Prints the size of a file in bytes.
 
     Parameters
     ----------
@@ -676,7 +668,7 @@ def print_file_size(file_path: str) -> None:
 
 
 def pretty_timedelta_str(dt: float, n_significant: int = 3) -> str:
-    r"""Return a pretty formatted string of a timedelta.
+    """Returns a pretty formatted string of a timedelta.
 
     Parameters
     ----------
@@ -702,11 +694,10 @@ def pretty_timedelta_str(dt: float, n_significant: int = 3) -> str:
     h = td.seconds // 3600
     m = (td.seconds // 60) % 60
     s = td.seconds % 60
-    ms = td.microseconds // 1000
-    mus = td.microseconds % 1000
+    ms, mus = divmod(td.microseconds, 1000)
     vals = [d, h, m, s, ms, mus]
     units = ['d', 'h', 'm', 's', 'ms', 'mus']
-    first = next(i for i, j in enumerate(vals) if j) 
+    first = next(i for i, j in enumerate(vals) if j)
     vals = vals[first:first+n_significant]
     units = units[first:first+n_significant]
     units_str = [f"{v} {u}" for v, u in zip(vals, units) if v > 0]
@@ -718,7 +709,7 @@ def print_time_perf(
     where: str = '',
     time: Optional[float] = None
 ) -> None:
-    r"""Print a time perf info.
+    """Prints a time perf info.
 
     Parameters
     ----------

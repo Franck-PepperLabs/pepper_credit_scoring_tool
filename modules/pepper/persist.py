@@ -1,6 +1,7 @@
-from typing import Optional, List
+from typing import Optional, List, Dict
 import glob
 from pepper.utils import create_if_not_exist
+import pandas as pd
 
 
 def _get_filenames_glob(
@@ -14,21 +15,21 @@ def _get_filenames_glob(
 
     Parameters
     ----------
-        root_dir : str
-            The root directory to search for filenames in.
-        ext : str, optional
-            The extension to filter the filenames by.
-            Defaults to None, which returns all files.
-        recursive : bool, optional
-            Whether or not to search for filenames recursively.
-            Defaults to False.
+    root_dir : str
+        The root directory to search for filenames in.
+    ext : str, optional
+        The extension to filter the filenames by.
+        Defaults to None, which returns all files.
+    recursive : bool, optional
+        Whether or not to search for filenames recursively.
+        Defaults to False.
 
     Returns
     -------
-        List[str]
-            A list of filenames found in the directory.
+    List[str]
+        A list of filenames found in the directory.
     """
-    ext = ext if ext else "*"
+    ext = ext or "*"
     if recursive:
         filenames = glob.glob(f"**/*.{ext}", root_dir=root_dir, recursive=True)
     else:
@@ -37,7 +38,30 @@ def _get_filenames_glob(
     return filenames
 
 
-def all_to_parquet(datadict, dir, engine="pyarrow", compression="gzip"):
+def all_to_parquet(
+    datadict: Dict[str, pd.DataFrame],
+    dir: str,
+    engine: str = "pyarrow",
+    compression: str = "gzip"
+) -> None:
+    """
+    Save the dataframes in the dictionary to Parquet files in the specified directory.
+
+    Parameters
+    ----------
+    datadict : Dict[str, pd.DataFrame]
+        A dictionary containing the dataframes to save, where the keys represent the table names.
+    dir : str
+        The directory to save the Parquet files in.
+    engine : str, optional
+        The engine to use for writing Parquet files. Defaults to 'pyarrow'.
+    compression : str, optional
+        The compression algorithm to use. Defaults to 'gzip'.
+
+    Returns
+    -------
+    None
+    """
     create_if_not_exist(dir)
     for name, data in datadict.items():
         print(".", end="")
