@@ -13,7 +13,7 @@ from sklearn.metrics import matthews_corrcoef
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from pepper.data_dict import group, subgroup, domain
+#from pepper.data_dict import group, subgroup, domain
 from pepper.env import get_tmp_dir
 # from pepper_commons import *
 from pepper.utils import set_plot_title, save_and_show

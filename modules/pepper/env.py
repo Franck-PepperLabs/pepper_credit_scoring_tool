@@ -14,10 +14,10 @@ def get_project_dir() -> str:
     str
         The project's base directory path.
     """
-    project_path = os.getenv("PROJECT_DIR")
-    if not project_path:
+    if project_path := os.getenv("PROJECT_DIR"):
+        return project_path
+    else:
         raise RuntimeError("The `PROJECT_DIR` environment variable is not set.")
-    return project_path
 
 
 def get_modules_dir() -> str:

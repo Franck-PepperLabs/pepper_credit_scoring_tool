@@ -22,7 +22,7 @@ def get_raw_table_names() -> List[str]:
 def load_raw_table(
     table_name: str,
     dataset_dir: Optional[str] = None,
-    format: Optional[str] = None
+    ext: Optional[str] = None
 ) -> pd.DataFrame:
     """Loads a raw data table from a file.
 
@@ -32,7 +32,7 @@ def load_raw_table(
         The table name which is the file name (without extension).
     dataset_dir : str, optional
         The directory where the file is located. Defaults to None.
-    format : str, optional
+    ext : str, optional
         The extension of the file. Defaults to None.
 
     Raises
@@ -51,29 +51,29 @@ def load_raw_table(
     
     Notes
     -----
-    If `dir` or `format` is None, the function will attempt to use the default
+    If `dataset_dir` or `ext` is None, the function will attempt to use the default
     values specified in the `get_dataset_pqt_dir` and `get_dataset_csv_dir`
     functions respectively.
     """
-    if format not in [None, "csv", "pqt"]:
+    if ext not in [None, "csv", "pqt"]:
         raise ValueError(
-            f"Invalid extension '{format}': use `'pqt'`, `'csv'` or `None`."
+            f"Invalid extension '{ext}': use `'pqt'`, `'csv'` or `None`."
         )
-    format = format if format else "pqt"
+    ext = ext or "pqt"
     if dataset_dir is None:
         dataset_dir = (
             get_dataset_pqt_dir()
-            if format == "pqt"
+            if ext == "pqt"
             else get_dataset_csv_dir()
         )
-    filepath = os.path.join(dataset_dir, f"{table_name}.{format}")
+    filepath = os.path.join(dataset_dir, f"{table_name}.{ext}")
     if not os.path.isfile(filepath):
         raise FileNotFoundError(f"The file '{filepath}' does not exist.")
     data = None
     print("load", filepath)
-    if format == "csv":
+    if ext == "csv":
         data = pd.read_csv(filepath)
-    elif format == "pqt":
+    elif ext == "pqt":
         data = pd.read_parquet(filepath)
     if not isinstance(data, pd.DataFrame):
         raise TypeError("Loaded data is not a pandas DataFrame.")

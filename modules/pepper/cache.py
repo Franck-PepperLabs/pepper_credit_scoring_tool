@@ -164,11 +164,10 @@ class Cache:
         """
         if Cache.exists(table_name):
             return Cache.get(table_name)
-        else:
-            if not isinstance(loader, Callable):
-                raise TypeError(f"{loader} is not a Callable")
-            Cache._loaders[table_name] = loader
-            return Cache.set(table_name, loader())
+        if not isinstance(loader, Callable):
+            raise TypeError(f"{loader} is not a Callable")
+        Cache._loaders[table_name] = loader
+        return Cache.set(table_name, loader())
 
     @staticmethod
     def _reset_cache(table_name: str) -> pd.DataFrame:

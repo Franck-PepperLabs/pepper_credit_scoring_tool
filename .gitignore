@@ -133,6 +133,16 @@ _trash_me/
 dataset/
 img/
 kernels/
-learn_it/
+pj_mgt/
+settings.json
+
+# learn_it/
+learn_it/api/
 libs_apis/
 tmp/
+learn_it/*/*.csv
+learn_it/lightgbm_kernel/
+
+# modules
+modules/home_credit/flask_app_*
+

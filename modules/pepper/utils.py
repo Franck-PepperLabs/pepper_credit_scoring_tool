@@ -296,7 +296,7 @@ def discrete_stats(
     >>> from pepper_utils import discrete_stats
     >>> data = pd.DataFrame({'A': [1, 2, 3, np.nan], 'B': ['cat', 'dog', 'dog', 'dog']})
     >>> discrete_stats(data, name='test')
-             n  n_u  n_na  Filling rate  Shannon entropy   dtypes
+             n  n_u  n_na     Fill rate  Shannon entropy   dtypes
     test
     A        3    3     1      0.750000         0.750000  float64
     B        3    2     0      1.000000         0.666667   object
@@ -311,8 +311,8 @@ def discrete_stats(
         'n': n,
         'n_u': n_u,
         'n_na': n_na,
-        'Filling rate': n / (n + n_na),
-        'Shannon entropy': n_u / n,
+        'Fill rate': n / (n + n_na),
+        'Diversity rate': n_u / n,
         'dtypes': data.dtypes
     }, index=list(data.columns))
 

@@ -40,7 +40,7 @@ def _get_filenames_glob(
 
 def all_to_parquet(
     datadict: Dict[str, pd.DataFrame],
-    dir: str,
+    target_dir: str,
     engine: str = "pyarrow",
     compression: str = "gzip"
 ) -> None:
@@ -51,7 +51,7 @@ def all_to_parquet(
     ----------
     datadict : Dict[str, pd.DataFrame]
         A dictionary containing the dataframes to save, where the keys represent the table names.
-    dir : str
+    target_dir : str
         The directory to save the Parquet files in.
     engine : str, optional
         The engine to use for writing Parquet files. Defaults to 'pyarrow'.
@@ -62,11 +62,11 @@ def all_to_parquet(
     -------
     None
     """
-    create_if_not_exist(dir)
+    create_if_not_exist(target_dir)
     for name, data in datadict.items():
         print(".", end="")
         data.to_parquet(
-            dir + name + ".pqt",
+            target_dir + name + ".pqt",
             engine=engine,
             compression=compression
         )

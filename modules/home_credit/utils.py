@@ -111,18 +111,25 @@ def get_table_with_reminder(table_name):
     return table
 
 
-def get_table_names():
-    return [
-        "application", "bureau", "previous_application",
-        "bureau_balance", "pos_cash_balance",
-        "credit_card_balance", "installments_payments"
+def get_table_names(raw=False):
+    table_names = [
+        "previous_application", "bureau", "bureau_balance",
+        "pos_cash_balance", "credit_card_balance", "installments_payments"
     ]
+    if raw:
+        table_names.extend([
+            "application_train", "application_test",
+            "columns_description", "sample_submission"
+        ])
+    else:
+        table_names.append("application")
+    return table_names
 
 
-def get_tables_dict():
+def get_tables_dict(raw=False):
     return {
         table_name: get_table(table_name)
-        for table_name in get_table_names()
+        for table_name in get_table_names(raw)
     }
 
 
@@ -164,14 +171,11 @@ def get_column_types_dist(df: pd.DataFrame) -> List[Tuple[str, int]]:
         )
     ))
 
-    # Sort it based on priority
-    sorted_col_types = sorted(
+    return sorted(
         col_types,
         key=lambda x: priority.get(x[0], float("inf")),
-        reverse=False
+        reverse=False,
     )
-
-    return sorted_col_types
 
 
 def display_frame_basic_infos(df: pd.DataFrame) -> None:
@@ -296,7 +300,7 @@ def _not_in_subs_table_idx(
     return untracked_sk_id
 
 
-""" Classif
+""" Classification
 """
 
 def get_class_label_name_map() -> Dict[int, str]:
