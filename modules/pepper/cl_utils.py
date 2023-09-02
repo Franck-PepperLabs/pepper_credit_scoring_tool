@@ -1,4 +1,4 @@
-""" Classification utils
+""" Clustering utils
 """
 
 from scipy.optimize import linear_sum_assignment as linear_assignment

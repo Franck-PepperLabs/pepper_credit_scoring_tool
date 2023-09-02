@@ -1,4 +1,4 @@
-from typing import Union, Callable
+from typing import Callable
 import re
 import threading
 import pandas as pd
@@ -16,7 +16,7 @@ class Cache:
 
         Parameters
         ----------
-        identifier : str)
+        identifier : str
             The string to check
 
         Returns
@@ -29,8 +29,7 @@ class Cache:
 
     @staticmethod
     def clear():
-        """ Clears the entire cache.
-        """
+        """Clears the entire cache."""
         with Cache._lock:
             # critical section, accessing _data and _loader
             Cache._data.clear()

@@ -339,4 +339,3 @@ def save_submission(sms_data: pd.DataFrame, sms_filename: str):
     filepath = os.path.join(submission_dir, sms_filename)
     sms_data.to_csv(filepath, index=False)
     display_file_link(filepath, "<b>Submission file</b> saved 🔗 ")
-

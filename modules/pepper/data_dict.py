@@ -34,10 +34,7 @@ def _load_struct(no_comment=True):
     dataset_dir = get_dataset_dir()
     data = pd.read_json(os.path.join(dataset_dir, 'struct.json'), typ='frame', orient='index')
     # print(bold('✔ struct'), 'loaded')
-    if no_comment:
-        return data
-    else:
-        return commented_return(True, 'struct', 'loaded', data)
+    return data if no_comment else commented_return(True, 'struct', 'loaded', data)
     #return data
 
 _struct = _load_struct()
@@ -58,5 +55,7 @@ _get_labels = lambda k, v: _struct.name[_struct[k] == v].values
 get_group_labels = lambda gp_label: _get_labels('group', gp_label)
 
 
-def new_multi_index(levels=['group']):
+def new_multi_index(levels=None):
+    if levels is None:
+        levels = ['group']
     return pd.MultiIndex.from_frame(_struct[levels + ['name']], names=levels+['var'])

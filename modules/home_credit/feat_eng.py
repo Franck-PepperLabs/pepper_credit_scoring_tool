@@ -115,10 +115,14 @@ def drop_no_last_app_rows(prev_app: pd.DataFrame) -> None:
 def eval_contracts_status(x):
     if pd.isnull(x) or isinstance(x, int):
         return np.nan
-    for prior in ["Active", "Signed", "Completed", "Demand"]:
-        if prior in x:
-            return prior
-    return x
+    return next(
+        (
+            prior
+            for prior in ["Active", "Signed", "Completed", "Demand"]
+            if prior in x
+        ),
+        x,
+    )
 
 
 def divide_rle(

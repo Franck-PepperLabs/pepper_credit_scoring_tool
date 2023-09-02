@@ -36,7 +36,8 @@ from pepper.utils import save_and_show, display_key_val
 from home_credit.load import load_prep_dataset
 
 def default_imputation(data: pd.DataFrame) -> pd.DataFrame:
-    """Imputes missing values in a DataFrame using the median of each column.
+    """
+    Impute missing values in a DataFrame using the median of each column.
     Missing values are first replaced with NaN values before imputation. 
     Only the training data (TARGET > -1) is used to fit the imputer.
     
@@ -70,6 +71,7 @@ def default_imputation(data: pd.DataFrame) -> pd.DataFrame:
         new_data,
         columns=data.columns, index=data.index
     )
+
 
 def fit_facade(clf, X_y_train, X_y_valid, loss_func):
     if isinstance(clf, lgbm.LGBMClassifier):
@@ -237,10 +239,9 @@ def eval_predictions(
                 scores[name][eval_type] = score
             if verbosity > 0:
                 kv(2, f"{eval_type_name} {name}", f"{score:.6f}")
-    else:
-        if verbosity > 0:
-            print(f"Only one class present in `{y_true_name}`. "
-                   "The scores are not defined in that case.")
+    elif verbosity > 0:
+        print(f"Only one class present in `{y_true_name}`. "
+               "The scores are not defined in that case.")
 
 
 # Eval a model with KFold or Stratified KFold
@@ -316,7 +317,7 @@ def kfold_train_and_eval_model(
     """
     if loss_func is None:
         loss_func = {"AUC": metrics.roc_auc_score}
-    
+
     if eval_metrics is None:
         eval_metrics = {}
     eval_metrics.update(loss_func)
@@ -341,7 +342,7 @@ def kfold_train_and_eval_model(
     kv(verbosity, "Loss function", ""), tx(verbosity, loss_func)
     kv(verbosity, "Eval metrics", ""), tx(verbosity, eval_metrics)
     kv(verbosity,
-       f"On {nfolds} {'stratifed ' if stratified else ''}KFolds", ""
+        f"On {nfolds} {'stratifed ' if stratified else ''}KFolds", ""
     )
 
     # Resample the data in a balanced set
@@ -381,11 +382,11 @@ def kfold_train_and_eval_model(
             columns=X_test.columns,
             index=X_test.index
         )
-    
+
     # Create the cross-validation model
     fold_params = {"n_splits": nfolds, "shuffle": True, "random_state": 42}
     folds = (StratifiedKFold if stratified else KFold)(**fold_params)
-    
+
     # Create arrays and dataframes to store results
     # `oof_preds` will store the out-of-fold predictions for the training data
     # `sms_preds` will store the submission predictions for the test data 
@@ -435,9 +436,15 @@ def kfold_train_and_eval_model(
 
     # Compute the overall train scores
     eval_predictions(
-        eval_metrics, scores, "overall",
-        y_train, oof_preds_proba, oof_preds_discr,
-        "y_train", f"Full", verbosity
+        eval_metrics,
+        scores,
+        "overall",
+        y_train,
+        oof_preds_proba,
+        oof_preds_discr,
+        "y_train",
+        "Full",
+        verbosity,
     )
 
     # Concatenate the feature importances across all folds
@@ -458,7 +465,7 @@ def kfold_train_and_eval_model(
 
     # Completed with the trained classifier if asked (optional)
     if return_trained_clf:
-        res.update({"trained_clf": clf})
+        res["trained_clf"] = clf
 
     return res
 
@@ -537,7 +544,7 @@ def kfold_train_and_eval_model_v2(
     """
     if loss_func is None:
         loss_func = {"AUC": metrics.roc_auc_score}
-    
+
     if eval_metrics is None:
         eval_metrics = {}
     eval_metrics.update(loss_func)
@@ -597,11 +604,11 @@ def kfold_train_and_eval_model_v2(
             columns=X.columns,
             index=X.index
         )"""
-    
+
     # Create the cross-validation model
     fold_params = {"n_splits": nfolds, "shuffle": True, "random_state": 42}
     folds = (StratifiedKFold if stratified else KFold)(**fold_params)
-    
+
     # Create arrays and dataframes to store results
     # `oof_preds` will store the out-of-fold predictions for the training data
     # `sms_preds` will store the submission predictions for the test data 
@@ -648,9 +655,15 @@ def kfold_train_and_eval_model_v2(
 
     # Compute the overall train scores
     eval_predictions(
-        eval_metrics, scores, "overall",
-        y, oof_preds_proba, oof_preds_discr,
-        "y_train", f"Full", verbosity
+        eval_metrics,
+        scores,
+        "overall",
+        y,
+        oof_preds_proba,
+        oof_preds_discr,
+        "y_train",
+        "Full",
+        verbosity,
     )
 
     # Concatenate the feature importances across all folds
@@ -668,7 +681,7 @@ def kfold_train_and_eval_model_v2(
 
     # Completed with the trained classifier if asked (optional)
     if return_trained_clf:
-        res.update({"trained_clf": clf})
+        res["trained_clf"] = clf
 
     return res
 

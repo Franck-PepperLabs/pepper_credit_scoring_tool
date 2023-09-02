@@ -20,7 +20,7 @@ def customer(customer_id):
     print("customer id:", customer_id)
     customer = data[data.SK_ID_CURR == customer_id]
     print(customer)
-    # FATAL ERROR: Erreur de conception critique : je ne peux pas aller plus loin
+    # TODO FATAL ERROR: Erreur de conception critique : je ne peux pas aller plus loin
     # Sans reprendre beaucoup de choses en arrière, donc 1 à 2 jours au moins
     # L'erreur magistrale a été de ne pas faire une pipeline (imputer, scaler, classifier)
     # Et là, je m'en mange les doigts.
