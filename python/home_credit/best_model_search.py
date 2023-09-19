@@ -125,7 +125,8 @@ def get_feat_imp_facade(clf):  # clf.feature_importances_,
 
 
 def require_probas(metric: Callable) -> bool:
-    """Checks if a metric requires probabilistic predictions.
+    """
+    Check if a metric requires probabilistic predictions.
 
     Parameters
     ----------
@@ -875,7 +876,7 @@ def plot_roc_curve(
 ) -> str:
     """DEPRECATED: Use `ax_plot_roc_curve` instead.
 
-    Displays ROC curve for binary classification model.
+    Display ROC curve for binary classification model.
 
     Parameters
     ----------
@@ -899,9 +900,11 @@ def plot_roc_curve(
         color="magenta"
     )
     plt.plot(
-        [0, 1], [0, 1], linestyle=':',
-        label=f"Baseline AUC = 0.5",
-        color="yellow"
+        [0, 1],
+        [0, 1],
+        linestyle=':',
+        label="Baseline AUC = 0.5",
+        color="yellow",
     )
     plt.fill_between(fpr, fpr, tpr, color='magenta', alpha=0.2)
     plt.xlabel('False Positive Rate')
@@ -914,7 +917,7 @@ def plot_roc_curve(
     else:
         title = f"ROC AUC Curve for `{title}`\n"
     plt.title(title, fontsize=15, weight="bold", pad=15)
-    
+
     # Adjust the spacing between the subplots and save/show the figure
     plt.tight_layout()
     return save_and_show(f"{title.lower()}", sub_dir="model_eval", return_filepath=True)
@@ -929,7 +932,8 @@ def ax_plot_roc_curve(
     ax: Optional[plt.Axes] = None,
     figsize: Tuple[float, float] = (4, 3)
 ) -> Union[str, None]:
-    """Displays ROC curve for binary classification model.
+    """
+    Display ROC curve for binary classification model.
 
     Parameters
     ----------
@@ -963,9 +967,11 @@ def ax_plot_roc_curve(
         color="magenta"
     )
     ax.plot(
-        [0, 1], [0, 1], linestyle=':',
-        label=f"Baseline AUC = 0.5",
-        color="yellow"
+        [0, 1],
+        [0, 1],
+        linestyle=':',
+        label="Baseline AUC = 0.5",
+        color="yellow",
     )
     ax.fill_between(fpr, fpr, tpr, color='magenta', alpha=0.2)
     ax.set_xlabel('False Positive Rate')
@@ -973,12 +979,9 @@ def ax_plot_roc_curve(
     ax.legend()
 
     # Add a title to the figure
-    if title is None:
-        title = "\n"
-    else:
-        title = f"{title}\n"
+    title = "\n" if title is None else f"{title}\n"
     ax.set_title(title, fontsize=15, pad=15)
-    
+
     # Adjust the spacing between the subplots and save/show the figure
     if fig is not None:
         fig.tight_layout()
@@ -994,7 +997,8 @@ def display_subset_info(
     y: np.ndarray, 
     _ind: str = ""
 ) -> None:
-    """Prints information about a subset of data.
+    """
+    Print information about a subset of data.
 
     Parameters
     ----------
@@ -1020,7 +1024,8 @@ def plot_model_eval_roc_and_confusion(
     single_figsize: Tuple[int, int] = (5, 5),
     title: str = None
 ) -> str:
-    """Plots the ROC AUC curves and confusion matrices for multiple models
+    """
+    Plot the ROC AUC curves and confusion matrices for multiple models
     in a single figure.
 
     Parameters
@@ -1083,7 +1088,8 @@ def post_train_eval(
     scaler: Union[TransformerMixin, None] = MinMaxScaler(),
     threshold: float = .5
 ) -> str:
-    """Evaluates the performance of the trained classifier on different subsets
+    """
+    Evaluate the performance of the trained classifier on different subsets
     of the dataset :
     * (X, y) : the entire training dataset
     * (X_s, y_s) : the subset used for training

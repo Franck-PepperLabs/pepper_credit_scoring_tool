@@ -5,23 +5,24 @@ from datetime import datetime, time
 import pandas as pd
 
 
-from sklearn import ensemble, preprocessing
+# from sklearn import ensemble, preprocessing
 
 from evidently import ColumnMapping
 from evidently.report import Report
 from evidently.metric_preset import (
     DataDriftPreset,
-    TargetDriftPreset,
+    # TargetDriftPreset,
     # RegressionMetric,
     RegressionPreset
 )
 
 from home_credit.load import get_reports_dir
-from home_credit.best_model_search import post_train_eval
+# from home_credit.best_model_search import post_train_eval
 
 
 def refine_index(data: pd.DataFrame) -> None:
-    """Refines the index of a DataFrame by combining the date column and the
+    """
+    Refine the index of a DataFrame by combining the date column and the
     hour column to create a new datetime index.
     
     Parameters
@@ -44,9 +45,10 @@ def refine_index(data: pd.DataFrame) -> None:
 
 def split_feats(
     data: pd.DataFrame,
-    nu_thres: int
+    nu_threshold: int
 ) -> Tuple[List[str], List[str], List[str]]:
-    """Splits the features in a dataframe into three categories: primary keys,
+    """
+    Split the features in a dataframe into three categories: primary keys,
     categorical and numerical based on the number of unique values in each
     column.
 
@@ -54,7 +56,7 @@ def split_feats(
     ----------
     data : pd.DataFrame
         The dataframe containing the features to split.
-    nu_thres : int
+    nu_threshold : int
         The threshold for the number of unique values to use to distinguish
         between categorical and numerical features.
 
@@ -69,8 +71,8 @@ def split_feats(
     n_samples = data.shape[0]
     nu = data.nunique()
     pks = nu[nu == n_samples].index.to_list()
-    cat_feats = nu[nu <= nu_thres].index.to_list()
-    num_feats = nu[(nu_thres < nu) & (nu < n_samples)].index.to_list()
+    cat_feats = nu[nu <= nu_threshold].index.to_list()
+    num_feats = nu[(nu_threshold < nu) & (nu < n_samples)].index.to_list()
     return pks, cat_feats, num_feats
 
 
@@ -79,7 +81,8 @@ def datetime_range(
     end_date: pd.Timestamp,
     time_step: str
 ) -> Iterator[pd.DataFrame]:
-    """Slices a time range into regularly spaced intervals.
+    """
+    Slice a time range into regularly spaced intervals.
     
     Parameters
     ----------
@@ -107,7 +110,8 @@ def get_col_map(
     num_feats: List[str], 
     cat_feats: List[str]
 ) -> ColumnMapping:
-    """Create a mapping between columns of true and predicted dataframes.
+    """
+    Create a mapping between columns of true and predicted dataframes.
 
     Parameters
     ----------
@@ -134,12 +138,13 @@ def get_col_map(
 
 
 def report_performance(
-    data_ref: pd.DataFrame, 
+    data_ref: pd.DataFrame,
     data_curr: pd.DataFrame,
     col_map: ColumnMapping,
-    metrics: Optional[List] = [RegressionPreset()]
+    metrics: Optional[List] = None
 ) -> Report:
-    """Reports the performance of a model by comparing the reference data and
+    """
+    Report the performance of a model by comparing the reference data and
     the current data.
     
     Parameters
@@ -159,6 +164,8 @@ def report_performance(
     Report
         The report object containing the performance metrics.
     """
+    if metrics is None:
+        metrics = [RegressionPreset()]
     report = Report(metrics=metrics)
     report.run(
         reference_data=data_ref,
@@ -168,13 +175,14 @@ def report_performance(
     return report
 
 
-def report_datadrift(
-    data_ref: pd.DataFrame, 
-    data_curr: pd.DataFrame, 
+def report_data_drift(
+    data_ref: pd.DataFrame,
+    data_curr: pd.DataFrame,
     col_map: ColumnMapping,
-    metrics: Optional[List] = [DataDriftPreset()]
+    metrics: Optional[List] = None
 ) -> Report:
-    """Reports the dat drift of a model by comparing the reference data and
+    """
+    Report the data drift of a model by comparing the reference data and
     the current data.
     
     Parameters
@@ -194,12 +202,14 @@ def report_datadrift(
     Report
         The report object containing the data drift metrics.
     """
+    if metrics is None:
+        metrics = [DataDriftPreset()]
     return report_performance(data_ref, data_curr, col_map, metrics)
 
 
 def save_report(report: Report, report_name: str) -> None:
     """
-    Saves a report to an HTML file.
+    Save a report to an HTML file.
     
     Parameters
     ----------

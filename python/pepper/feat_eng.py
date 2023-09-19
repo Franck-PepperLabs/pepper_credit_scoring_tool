@@ -1,4 +1,4 @@
-from typing import Union, Any, List, Tuple, Callable
+from typing import Union, Any, List, Callable
 
 import itertools
 
@@ -15,7 +15,8 @@ def nullify(
     data: Union[pd.Series, pd.DataFrame],
     val: Union[Any, List[Any]]
 ) -> None:
-    """Replaces occurrences of the value(s) val by None in a pandas Series or
+    """
+    Replace occurrences of the value(s) val by None in a pandas Series or
     DataFrame.
     
     Parameters
@@ -43,7 +44,8 @@ def reduce_long_tail(
     s: pd.Series,
     agg: Union[None, bool, float, int] = .01
 ) -> pd.Series:
-    """Reduces the long tail of a pandas Series by replacing infrequent values
+    """
+    Reduce the long tail of a pandas Series by replacing infrequent values
     with a single category.
 
     Parameters
@@ -98,19 +100,20 @@ def reduce_long_tail(
 
 def get_na_profile(
     data: pd.DataFrame,
-    na_symb: str = "◻",
-    nona_symb: str = "◼"
+    na_symbol: str = "◻",
+    nona_symbol: str = "◼"
 ) -> pd.Series:
-    """Returns a Series containing a profile of the missing values in each row
+    """
+    Return a Series containing a profile of the missing values in each row
     of a DataFrame.
 
     Parameters
     ----------
     data : pd.DataFrame
         The DataFrame to get the missing value profile for.
-    na_symb : str
+    na_symbol : str
         The symbol to use for missing values.
-    nona_symb : str
+    nona_symbol : str
         The symbol to use for non-missing values.
 
     Returns
@@ -140,20 +143,21 @@ def get_na_profile(
         # Apply the predicate function
         data.isnull()
         # Replace NaN values with the given symbol 
-        .replace({True: na_symb, False: nona_symb})
+        .replace({True: na_symbol, False: nona_symbol})
         # Concatenate the values in each row to form a single string
         .apply(lambda r: "".join(r), axis=1)
     )
 
 
-# Generalisation of the previous
+# Generalization of the previous
 def get_profile(
     data: pd.DataFrame,
     predicate: Callable[[pd.DataFrame], pd.DataFrame] = lambda x: x,
-    na_symb: str = "◻",
-    nona_symb: str = "◼"
+    na_symbol: str = "◻",
+    nona_symbol: str = "◼"
 ) -> pd.Series:
-    """Returns a Series containing a profile of the values in each row of a
+    """
+    Return a Series containing a profile of the values in each row of a
     DataFrame after applying a given predicate function to the input DataFrame.
 
     Parameters
@@ -163,9 +167,9 @@ def get_profile(
     predicate : Callable[[pd.DataFrame], pd.DataFrame], optional
         The predicate function to apply to each row of the DataFrame.
         Default is the identity function, which returns the original DataFrame.
-    na_symb : str, optional
+    na_symbol : str, optional
         The symbol to use for missing values, by default "◻".
-    nona_symb : str, optional
+    nona_symbol : str, optional
         The symbol to use for non-missing values, by default "◼".
 
     Returns
@@ -195,14 +199,15 @@ def get_profile(
         # Apply the predicate function
         predicate(data) 
         # Replace NaN values with the given symbol 
-        .replace({True: na_symb, False: nona_symb})
+        .replace({True: na_symbol, False: nona_symbol})
         # Concatenate the values in each row to form a single string
         .apply(lambda r: "".join(r), axis=1)
     )
 
 
 def row_rle(row: pd.Series) -> np.ndarray:
-    """Reduces consecutive elements in a row to value and count pairs using
+    """
+    Reduce consecutive elements in a row to value and count pairs using
     RLE.
 
     DEPRECATED use `series_rle_reduction` instead
@@ -239,15 +244,60 @@ def row_rle(row: pd.Series) -> np.ndarray:
     return np.column_stack((vals, lens))
 
 
-def series_rle_reduction(s: pd.Series) -> np.ndarray:
-    # don't do this : z = gpby.apply(lambda df: df.apply(rle_reduction))
-    # but this : zz = gpby.apply(data_rle_reduction)
-    # Replace np.nan by "☗" and cast row in ndarray
+def series_rle_reduction(
+    s: pd.Series,
+    # TODO extension : dtype = None : pour forcer un astype en supposons que le type peut
+    # avoir été upcasté par exemple par un groupby
+    # TODO extension : decimals: int = None : pour permettre de regrouper des termes proches
+) -> np.ndarray:
+    """
+    Reduce consecutive elements in a pandas Series to value and count pairs using
+    Run-Length Encoding (RLE).
 
-    # TODO : sécuriser si s est None ou vide : retourner un tableau vide
+    Parameters
+    ----------
+    s : pd.Series
+        The pandas Series to be processed.
+
+    Returns
+    -------
+    np.ndarray
+        An array of value and count pairs, where each pair consists of a unique
+        value from the input Series and the count of consecutive occurrences of
+        that value.
+
+    Notes
+    -----
+    This function replaces consecutive occurrences of the same value in the input
+    Series with a single entry that contains the value and the count of
+    consecutive occurrences. It is commonly used for compressing sequences of
+    repeated values.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from pepper.feat_eng import series_rle_reduction
+    >>> s = pd.Series([1, 1, 2, 2, 2, 3, 3, 4, 4, 4, 4])
+    >>> result = series_rle_reduction(s)
+    >>> print(result)
+    [(1, 2) (2, 3) (3, 2) (4, 4)]
+
+    >>> s = pd.Series([None, None, 'A', 'A', None, None, 'B'])
+    >>> result = series_rle_reduction(s)
+    >>> print(result)
+    [(nan, 2) ('A', 2) (nan, 2) ('B', 1)]
+
+    The function replaces consecutive identical values with a single entry
+    containing the value and the count of consecutive occurrences.
+    """
+    # Avoid doing this: grouped.apply(lambda df: df.apply(rle_reduction))
+    # Instead, use this: grouped.apply(data_rle_reduction)
+
+    # Ensure safety if 's' is None or empty; return an empty array
     if s is None or s.shape[0] == 0:
         return np.array([])
 
+    # Replace np.nan by "☗" and cast the Series to a numpy ndarray
     s = s.astype(object)
     s.fillna("☗", inplace=True)
     a = s.to_numpy()
@@ -255,7 +305,7 @@ def series_rle_reduction(s: pd.Series) -> np.ndarray:
     # display(a)
 
     # Find the locations of elements that are not equal to the previous one
-    # The additional `True` marks the end of sequence
+    # The additional `True` marks the start and the end of sequence
     diff = np.concatenate(([True], a[:-1] != a[1:], [True]))
     # print("diff arr")
     # display(diff)
@@ -282,8 +332,42 @@ def series_rle_reduction(s: pd.Series) -> np.ndarray:
 
 
 def data_rle_reduction(data: pd.DataFrame) -> pd.Series:
-    # don't do this : z = gpby.apply(lambda df: df.apply(rle_reduction)) [10 m 30]
-    # but this : zz = gpby.apply(data_rle_reduction) [3 min 20]
+    """
+    Reduce consecutive elements in each column of a DataFrame to value and count pairs using RLE (Run-Length Encoding).
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The input DataFrame to process.
+
+    Returns
+    -------
+    pd.Series
+        A Series containing a sequence of tuples for each column. Each tuple consists of a unique value and its corresponding count in the column.
+
+    Notes
+    -----
+    - Avoid using this function within nested apply operations, as it may lead to performance issues.
+    - Instead, apply it directly to the DataFrame you want to process.
+    - Missing values in the DataFrame will be temporarily replaced with the symbol "☗" during processing.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from pepper.feat_eng import data_rle_reduction
+    >>> df = pd.DataFrame({
+    ...     'A': [1, 2, 2, 2, 1],
+    ...     'B': [None, 1, 1, None, 2]
+    ... })
+    >>> result = data_rle_reduction(df)
+    >>> print(result)
+    A    ((1, 1), (2, 3), (1, 1))
+    B           ((☗, 1), (1, 2), (☗, 2), (2, 1))
+    dtype: object
+    """
+    # Avoid doing this: grouped.apply(lambda df: df.apply(rle_reduction))
+    # Instead, use this: grouped.apply(data_rle_reduction)
+
     # Replace np.nan by "☗" and cast row in ndarray
     data = data.astype(object)
     data.fillna("☗", inplace=True)
@@ -360,7 +444,8 @@ def data_rle_reduction(data: pd.DataFrame) -> pd.Series:
 
 
 def jumps_rle(s: pd.Series) -> tuple:
-    """Encodes a series using run-length encoding (RLE).
+    """
+    Encode a series using run-length encoding (RLE).
     
     RLE is a lossless data compression algorithm that works by
     reducing the amount of data needed to represent a repeating sequence
@@ -385,10 +470,13 @@ def jumps_rle(s: pd.Series) -> tuple:
     
     Examples
     --------
-        >>> s = pd.Series([1, 1, 1, 2, 2, 3])
-        >>> jumps_rle(s)
-        ((1, 3), (2, 2), (3, 1))
-        >>> gpby.agg([min, max, len, jumps_rle])
+    >>> s = pd.Series([1, 2, 3, 4, 5, 6])
+    >>> print(jumps_rle(s))
+    ((1, 5),)
+    >>> s = pd.Series([1, 1, 1, 2, 2, 3])
+    >>> print(jumps_rle(s))
+    ((0, 2), (1, 1), (0, 1), (1, 1))
+    >>> gpby.agg([min, max, len, jumps_rle])
     """
 
     if s.shape[0] == 1:
@@ -396,7 +484,7 @@ def jumps_rle(s: pd.Series) -> tuple:
     # Extract s values ndarray
     a = s.to_numpy()
     # Calculate jumps between values
-    j = np.diff(a)
+    j = np.diff(a, prepend=-1)
     # Find the locations of jumps that differ from the previous one
     # The additional `True` marks the end of sequence
     diff = np.concatenate(([True], j[:-1] != j[1:], [True]))

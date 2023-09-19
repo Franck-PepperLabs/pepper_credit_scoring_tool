@@ -6,7 +6,8 @@ def get_dependency_tree(
     root_pkg_name: str,
     verbose: bool=False
 ) -> Dict[str, Dict]:
-    """Returns the dependency tree of the root package, where each node is
+    """
+    Return the dependency tree of the root package, where each node is
     represented by a dictionary with keys "requirement", "version", and
     "dependencies". The value of "version" is a string representing the
     version of the package, the value of "dependencies" is a dictionary
@@ -35,8 +36,8 @@ def get_dependency_tree(
         pkg_name: str,
         ancestor_pkg_names: List[str] = []
     ) -> Dict[str, Tuple[str, Union[Dict, None]]]:
-        # Dict[str, Tuple[str, Union[Dict[str, Tuple[str, str, Union[Dict, None]]]], str]]]:
-        """Recursively builds the dependency tree of a package.
+        """
+        Recursively build the dependency tree of a package.
 
         Parameters
         ----------
@@ -86,10 +87,10 @@ def get_dependency_tree(
         return version, deps_tree
     
     # Get the dependency tree
-    root_version, root_dependencie = _get_dependency_tree(root_pkg_name)
+    root_version, root_dependencies = _get_dependency_tree(root_pkg_name)
     return {
         root_pkg_name: {
             "version": root_version,
-            "dependencies": root_dependencie
+            "dependencies": root_dependencies
         }
     }

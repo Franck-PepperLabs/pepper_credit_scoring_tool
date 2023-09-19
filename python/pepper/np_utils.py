@@ -5,7 +5,8 @@ def subindex(
     a: np.ndarray,
     sorted: bool = False
 ) -> np.ndarray:
-    """Returns an array of the same shape as 'a', where each element is
+    """
+    Return an array of the same shape as 'a', where each element is
     assigned a unique integer identifier based on the number of times the
     element has occurred previously in the array.
 
@@ -32,6 +33,7 @@ def subindex(
     >>> subindex(a)
     array([0, 1, 0, 1, 2, 0, 0, 1, 0, 1, 2, 3])
     >>> a = np.array([1, 11, 5, 11, 1, 11, 5, 0, 3, 11, 0, 1])
+    >>> subindex(a)
     array([0, 0, 0, 1, 1, 2, 1, 0, 0, 3, 1, 2])
     
     Notes
@@ -48,7 +50,7 @@ def subindex(
     if not sorted:
         idx = np.argsort(a)
         a = a[idx]
-    
+
     # Find unique values, their indices, and their counts
     _, i, c = np.unique(a, return_index=True, return_counts=True)
 
@@ -59,8 +61,8 @@ def subindex(
 
     if sorted:
         return x
-    else:
-        # Apply inverse permutation if input array was sorted
-        inv_idx = np.empty_like(idx)
-        inv_idx[idx] = np.arange(len(idx))
-        return x[inv_idx]
+
+    # Apply inverse permutation if input array was sorted
+    inv_idx = np.empty_like(idx)
+    inv_idx[idx] = np.arange(len(idx))
+    return x[inv_idx]

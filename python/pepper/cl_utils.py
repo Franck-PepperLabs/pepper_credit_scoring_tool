@@ -1,17 +1,22 @@
 """ Clustering utils
 """
 
-from scipy.optimize import linear_sum_assignment as linear_assignment
+from typing import Union, List
+from scipy.optimize import linear_sum_assignment
 import numpy as np
 
 
-def match_class(y_clu, y_cla):
-    """Finds the best matching between true and predicted classes based on
+def match_class(
+    y_clu: Union[List, np.ndarray],
+    y_cla: Union[List, np.ndarray]
+) -> np.ndarray:
+    """
+    Find the best matching between true and predicted classes based on
     the size of the intersection between the indices of `y_clu` and `y_cla`.
 
     Parameters
     ----------
-    y_clu : np.ndarray)
+    y_clu : np.ndarray
         Predicted classes
     y_cla : np.ndarray
         True classes
@@ -24,8 +29,14 @@ def match_class(y_clu, y_cla):
 
     Example
     -------
-    >>> mapping = match_class(y_pred, y)  # linear assignement
+    >>> mapping = match_class(y_pred, y)  # linear assignment
     >>> y_pred = np.array([mapping[clu] for clu in y_pred])
+    
+    >>> y_cla = [0, 0, 1, 1, 2, 2, 1]
+    >>> y_clu = [1, 1, 0, 0, 2, 2, 1]
+    >>> mapping = match_class(y_clu, y_cla)  # linear assignment
+    >>> mapped_y_clu = np.array([mapping[clu] for clu in y_clu])
+    [0 0 1 1 2 2 0]
 
     See also
     --------
@@ -51,4 +62,4 @@ def match_class(y_clu, y_cla):
             match_matrix[clu, cla] = intersection.shape[0]
 
     # display(match_matrix)
-    return linear_assignment(-match_matrix)[1]
+    return linear_sum_assignment(-match_matrix)[1]

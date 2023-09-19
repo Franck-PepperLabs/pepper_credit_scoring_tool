@@ -1,0 +1,450 @@
+{
+    "mappings": {
+        "bureau_balance": {
+            "TARGET": ["ID", "TGT", ""],
+            "SK_ID_CURR": ["ID", "CID", ""],
+            "SK_ID_BUREAU": ["ID", "BID", ""],
+            "MONTHS_BALANCE": ["ID", "M°", ""],
+            "STATUS": ["STATUS", "", ""]
+        },
+        "pos_cash_balance": {
+            "TARGET": ["ID", "TGT", ""],
+            "SK_ID_PREV": ["ID", "PID", ""],
+            "SK_ID_CURR": ["ID", "CID", ""],
+            "MONTHS_BALANCE": ["ID", "M°", ""],
+            "CNT_INSTALMENT": ["INST", "", "CNT"],
+            "CNT_INSTALMENT_FUTURE": ["INST", "FUT", "CNT"],
+            "NAME_CONTRACT_STATUS": ["STATUS", "", ""],
+            "SK_DPD" : ["DPD", "", ""],
+            "SK_DPD_DEF": ["DPD", "DEF", ""]
+        },
+        "credit_card_balance": {
+            "TARGET": ["ID", "TGT", ""],
+            "SK_ID_PREV": ["ID", "PID", ""],
+            "SK_ID_CURR": ["ID", "CID", ""],
+            "MONTHS_BALANCE": ["ID", "M°", ""],
+            "AMT_CREDIT_LIMIT_ACTUAL": ["MAX", "", "AMT"],
+            "AMT_BALANCE": ["BAL", "", "AMT"],
+            "AMT_DRAWINGS_CURRENT": ["DRW", "TOT", "AMT"],
+            "AMT_DRAWINGS_ATM_CURRENT": ["DRW", "ATM", "AMT"],
+            "AMT_DRAWINGS_POS_CURRENT": ["DRW", "POS", "AMT"],
+            "AMT_DRAWINGS_OTHER_CURRENT": ["DRW", "OTH", "AMT"],
+            "CNT_DRAWINGS_CURRENT": ["DRW", "TOT", "CNT"],
+            "CNT_DRAWINGS_ATM_CURRENT": ["DRW", "ATM", "CNT"],
+            "CNT_DRAWINGS_POS_CURRENT": ["DRW", "POS", "CNT"],
+            "CNT_DRAWINGS_OTHER_CURRENT": ["DRW", "OTH", "CNT"],
+            "AMT_PAYMENT_CURRENT": ["PYT", "", "AMT"],
+            "AMT_PAYMENT_TOTAL_CURRENT": ["PYT", "TOT", "AMT"],
+            "AMT_INST_MIN_REGULARITY": ["INST", "", "AMT"],
+            "CNT_INSTALMENT_MATURE_CUM": ["INST", "", "CNT"],
+            "AMT_RECEIVABLE_PRINCIPAL": ["RCV", "", "AMT"],
+            "AMT_TOTAL_RECEIVABLE": ["RCV", "TOT", "AMT"],
+            "NAME_CONTRACT_STATUS": ["STATUS", "", ""],
+            "SK_DPD" : ["DPD", "", ""],
+            "SK_DPD_DEF": ["DPD", "DEF", ""]
+        },
+        "installments_payments": {
+            "TARGET": ["ID", "TGT", ""],
+            "SK_ID_PREV": ["ID", "PID", ""],
+            "SK_ID_CURR": ["ID", "CID", ""],
+            "NUM_INSTALMENT_VERSION": ["ID", "INST", "VER"],
+            "NUM_INSTALMENT_NUMBER": ["ID", "INST", "NUM"],
+            "DAYS_INSTALMENT": ["INST", "", "DT"],
+            "DAYS_ENTRY_PAYMENT": ["PYT", "", "DT"],
+            "AMT_INSTALMENT": ["INST", "", "AMT"],
+            "AMT_PAYMENT" : ["PYT", "", "AMT"]
+        },
+        "bureau": {
+            "TARGET": ["ID", "TGT", ""],
+            "SK_ID_BUREAU": ["ID", "BID", ""],
+            "SK_ID_CURR": ["ID", "CID", ""],
+            "CREDIT_ACTIVE": ["STATUS", "", ""],
+            "CREDIT_CURRENCY": ["CURRENCY", "", "PAR"],
+            "CREDIT_TYPE": ["CDT", "TYPE", "PAR"],
+            "CNT_CREDIT_PROLONG": ["CDT", "PRL", "CNT"],
+            "DAYS_CREDIT_UPDATE": ["CDT", "UPD", "DT"],
+            "DAYS_CREDIT": ["CDT", "", "DAYS"],
+            "DAYS_CREDIT_ENDDATE": ["CDT", "END", "DT"],
+            "DAYS_ENDDATE_FACT": ["FAC", "END", "DT"],
+            "CREDIT_DAY_OVERDUE": ["CDT", "OVD", "DT"],
+            "AMT_CREDIT_MAX_OVERDUE": ["MAX", "OVD", "AMT"],
+            "AMT_CREDIT_SUM": ["SUM", "", "AMT"],
+            "AMT_CREDIT_SUM_DEBT": ["SUM", "DBT", "AMT"],
+            "AMT_CREDIT_SUM_LIMIT": ["SUM", "MAX", "AMT"],
+            "AMT_CREDIT_SUM_OVERDUE": ["SUM", "OVD", "AMT"],
+            "AMT_ANNUITY": ["ANN", "", "AMT"]
+        },
+        "previous_application": {
+            "TARGET": ["ID", "TGT", ""],
+            "SK_ID_PREV": ["ID", "PID", ""],
+            "SK_ID_CURR": ["ID", "CID", ""],
+            "NAME_CONTRACT_STATUS": ["STATUS", "", ""],
+            "NAME_CONTRACT_TYPE": ["LOAN", "TYPE", "CAT"],
+            "AMT_ANNUITY": ["ANN", "", "AMT"],
+            "AMT_APPLICATION": ["APP", "", "AMT"],
+            "AMT_CREDIT": ["CDT", "", "AMT"],
+            "AMT_DOWN_PAYMENT": ["PYT", "DWN", "AMT"],
+            "AMT_GOODS_PRICE": ["GOODS", "PRICE", "AMT"],
+            "CNT_PAYMENT": ["PYT", "", "CNT"],
+            "RATE_DOWN_PAYMENT": ["PYT", "DWN", "RT"],
+            "RATE_INTEREST_PRIMARY": ["INT", "PRM", "RT"],
+            "RATE_INTEREST_PRIVILEGED": ["INT", "PVL", "RT"],
+            "WEEKDAY_APPR_PROCESS_START": ["APP", "", "WD"],
+            "HOUR_APPR_PROCESS_START": ["APP", "", "HH"],
+            "FLAG_LAST_APPL_PER_CONTRACT": ["APP", "PCO", "FLG"],
+            "NFLAG_LAST_APPL_IN_DAY": ["APP", "IND", "FLG"],
+            "NAME_CASH_LOAN_PURPOSE": ["POS", "OBJ", "CAT"],
+            "NAME_PAYMENT_TYPE": ["PYT", "", "CAT"],
+            "CODE_REJECT_REASON": ["RJT", "", "CAT"],
+            "NAME_TYPE_SUITE": ["WITH", "", "CAT"],
+            "NAME_CLIENT_TYPE": ["CLIENT", "", "CAT"],
+            "NAME_GOODS_CATEGORY": ["SALES", "GDS", "CAT"],
+            "NAME_PORTFOLIO": ["SALES", "PFL", "CAT"],
+            "NAME_PRODUCT_TYPE": ["SALES", "IO", "CAT"],
+            "CHANNEL_TYPE": ["SALES", "CNL", "CAT"],
+            "SELLERPLACE_AREA": ["SALES", "PLC", "ID"],
+            "NAME_SELLER_INDUSTRY": ["SALES", "IDS", "CAT"],
+            "NAME_YIELD_GROUP": ["RATE", "GRP", "CAT"],
+            "PRODUCT_COMBINATION": ["PRD", "CMB", "CAT"],
+            "DAYS_DECISION": ["ACK", "", "DT"],
+            "DAYS_FIRST_DRAWING": ["DRW", "FST", "DT"],
+            "DAYS_FIRST_DUE": ["DUE", "FST", "DT"],
+            "DAYS_LAST_DUE_1ST_VERSION": ["DUE", "LST_1", "DT"],
+            "DAYS_LAST_DUE": ["DUE", "LST", "DT"],
+            "DAYS_TERMINATION": ["TRM", "", "DT"],
+            "NFLAG_INSURED_ON_APPROVAL": ["INS", "", "FLG"]
+        },
+        "application": {
+            "TARGET": ["ID", "TGT", ""],
+            "SK_ID_CURR": ["ID", "CID", ""],
+            "AMT_INCOME_TOTAL": ["INCOME", "", "AMT"],
+            "AMT_CREDIT": ["LOAN", "", "AMT"],
+            "AMT_ANNUITY": ["ANNUITY", "", "AMT"],
+            "AMT_GOODS_PRICE": ["GOODS", "", "AMT"],
+            "CODE_GENDER": ["GDR", "", "CAT"],
+            "FLAG_OWN_CAR": ["OWN", "CAR", "FLG"],
+            "FLAG_OWN_REALTY": ["OWN", "REALTY", "FLG"],
+            "FLAG_MOBIL": ["MOB", "", "FLG"],
+            "FLAG_EMP_PHONE": ["PHONE", "EMP", "FLG"],
+            "FLAG_WORK_PHONE": ["PHONE", "WRK", "FLG"],
+            "FLAG_CONT_MOBILE": ["MOB", "CON", "FLG"],
+            "FLAG_PHONE": ["PHONE", "", "FLG"],
+            "FLAG_EMAIL": ["EMAIL", "", "FLG"],
+            "NAME_CONTRACT_TYPE": ["LOAN", "TYPE", "CAT"],
+            "NAME_TYPE_SUITE": ["WITH", "", "CAT"],
+            "NAME_INCOME_TYPE": ["INCOME", "", "CAT"],
+            "NAME_EDUCATION_TYPE": ["EDU", "", "CAT"],
+            "NAME_FAMILY_STATUS": ["FAMILY", "STATUS", "CAT"],
+            "NAME_HOUSING_TYPE": ["HOUSING", "", "CAT"],
+            "OCCUPATION_TYPE": ["WORK", "ACT", "CAT"],
+            "ORGANIZATION_TYPE": ["WORK", "ORG", "CAT"],
+            "CNT_FAM_MEMBERS": ["FAMILY", "", "CNT"],
+            "CNT_CHILDREN": ["FAMILY", "CHILD", "CNT"],
+            "DAYS_BIRTH": ["BIRTH", "", "DT"],
+            "DAYS_EMPLOYED": ["EMPLOYED", "", "DT"],
+            "DAYS_REGISTRATION": ["REGISTERED", "", "DT"],
+            "DAYS_ID_PUBLISH": ["ID_PUBLISH", "", "DT"],
+            "DAYS_LAST_PHONE_CHANGE": ["PHONE", "", "DT"],
+            "OWN_CAR_AGE": ["OWN", "CAR", "DT"],
+            "WEEKDAY_APPR_PROCESS_START": ["APP", "", "WD"],
+            "HOUR_APPR_PROCESS_START": ["APP", "", "HH"],
+            "REGION_POPULATION_RELATIVE": ["REG", "POP", "AMT"],
+            "REGION_RATING_CLIENT": ["REG", "", "SCR"],
+            "REGION_RATING_CLIENT_W_CITY": ["REG", "CITY", "SCR"],
+            "REG_REGION_NOT_LIVE_REGION": ["REG", "A", "FLG"],
+            "REG_REGION_NOT_WORK_REGION": ["REG", "B", "FLG"],
+            "LIVE_REGION_NOT_WORK_REGION": ["REG", "C", "FLG"],
+            "REG_CITY_NOT_LIVE_CITY": ["REG", "D", "FLG"],
+            "REG_CITY_NOT_WORK_CITY": ["REG", "E", "FLG"],
+            "LIVE_CITY_NOT_WORK_CITY": ["REG", "F", "FLG"],
+            "EXT_SOURCE_1": ["ES", "1", "SCR"],
+            "EXT_SOURCE_2": ["ES", "2", "SCR"],
+            "EXT_SOURCE_3": ["ES", "3", "SCR"],
+            "APARTMENTS_AVG": ["STAT", "APARTMENTS_CNT", "AVG"],
+            "BASEMENTAREA_AVG": ["STAT", "BASEMENT_AREA", "AVG"],
+            "YEARS_BEGINEXPLUATATION_AVG": ["STAT", "YEARS_EXPLOIT", "AVG"],
+            "YEARS_BUILD_AVG": ["STAT", "YEARS_BUILD", "AVG"],
+            "COMMONAREA_AVG": ["STAT", "COMMON_AREA", "AVG"],
+            "ELEVATORS_AVG": ["STAT", "ELEVATORS_CNT", "AVG"],
+            "ENTRANCES_AVG": ["STAT", "ENTRANCES_CNT", "AVG"],
+            "FLOORSMAX_AVG": ["STAT", "FLOORS_MAX", "AVG"],
+            "FLOORSMIN_AVG": ["STAT", "FLOORS_MIN", "AVG"],
+            "LANDAREA_AVG": ["STAT", "LAND_AREA", "AVG"],
+            "LIVINGAPARTMENTS_AVG": ["STAT", "LIVING_APARTMENTS_CNT", "AVG"],
+            "LIVINGAREA_AVG": ["STAT", "LIVING_AREA", "AVG"],
+            "NONLIVINGAPARTMENTS_AVG": ["STAT", "NON_LIVING_APARTMENTS_CNT", "AVG"],
+            "NONLIVINGAREA_AVG": ["STAT", "NON_LIVING_AREA", "AVG"],
+            "APARTMENTS_MODE": ["STAT", "APARTMENTS_CNT", "MOD"],
+            "BASEMENTAREA_MODE": ["STAT", "BASEMENT_AREA", "MOD"],
+            "YEARS_BEGINEXPLUATATION_MODE": ["STAT", "YEARS_EXPLOIT", "MOD"],
+            "YEARS_BUILD_MODE": ["STAT", "YEARS_BUILD", "MOD"],
+            "COMMONAREA_MODE": ["STAT", "COMMON_AREA", "MOD"],
+            "ELEVATORS_MODE": ["STAT", "ELEVATORS_CNT", "MOD"],
+            "ENTRANCES_MODE": ["STAT", "ENTRANCES_CNT", "MOD"],
+            "FLOORSMAX_MODE": ["STAT", "FLOORS_MAX", "MOD"],
+            "FLOORSMIN_MODE": ["STAT", "FLOORS_MIN", "MOD"],
+            "LANDAREA_MODE": ["STAT", "LAND_AREA", "MOD"],
+            "LIVINGAPARTMENTS_MODE": ["STAT", "LIVING_APARTMENTS_CNT", "MOD"],
+            "LIVINGAREA_MODE": ["STAT", "LIVING_AREA", "MOD"],
+            "NONLIVINGAPARTMENTS_MODE": ["STAT", "NON_LIVING_APARTMENTS_CNT", "MOD"],
+            "NONLIVINGAREA_MODE": ["STAT", "NON_LIVING_AREA", "MOD"],
+            "APARTMENTS_MEDI": ["STAT", "APARTMENTS_CNT", "MED"],
+            "BASEMENTAREA_MEDI": ["STAT", "BASEMENT_AREA", "MED"],
+            "YEARS_BEGINEXPLUATATION_MEDI": ["STAT", "", "MED"],
+            "YEARS_BUILD_MEDI": ["STAT", "YEARS_EXPLOIT", "MED"],
+            "COMMONAREA_MEDI": ["STAT", "COMMON_AREA", "MED"],
+            "ELEVATORS_MEDI": ["STAT", "ELEVATORS_CNT", "MED"],
+            "ENTRANCES_MEDI": ["STAT", "ENTRANCES_CNT", "MED"],
+            "FLOORSMAX_MEDI": ["STAT", "FLOORS_MAX", "MED"],
+            "FLOORSMIN_MEDI": ["STAT", "FLOORS_MIN", "MED"],
+            "LANDAREA_MEDI": ["STAT", "LAND_AREA", "MED"],
+            "LIVINGAPARTMENTS_MEDI": ["STAT", "LIVING_APARTMENTS_CNT", "MED"],
+            "LIVINGAREA_MEDI": ["STAT", "LIVING_AREA", "MED"],
+            "NONLIVINGAPARTMENTS_MEDI": ["STAT", "NON_LIVING_APARTMENTS_CNT", "MED"],
+            "NONLIVINGAREA_MEDI": ["STAT", "NON_LIVING_AREA", "MED"],
+            "FONDKAPREMONT_MODE": ["STAT", "FONDKAPREMONT", "MOD"],
+            "HOUSETYPE_MODE": ["STAT", "HOUSE_TYPE", "MOD"],
+            "TOTALAREA_MODE": ["STAT", "TOTAL_AREA", "MOD"],
+            "WALLSMATERIAL_MODE": ["STAT", "WALLS_MATERIAL", "MOD"],
+            "EMERGENCYSTATE_MODE": ["STAT", "EMERGENCY_STATE", "MOD"],
+            "OBS_30_CNT_SOCIAL_CIRCLE": ["CIRC_30", "OBS", "CNT"],
+            "DEF_30_CNT_SOCIAL_CIRCLE": ["CIRC_30", "DEF", "CNT"],
+            "OBS_60_CNT_SOCIAL_CIRCLE": ["CIRC_60", "OBS", "CNT"],
+            "DEF_60_CNT_SOCIAL_CIRCLE": ["CIRC_60", "DEF", "CNT"],
+            "FLAG_DOCUMENT_2": ["DOC", "2", "FLG"],
+            "FLAG_DOCUMENT_3": ["DOC", "3", "FLG"],
+            "FLAG_DOCUMENT_4": ["DOC", "4", "FLG"],
+            "FLAG_DOCUMENT_5": ["DOC", "5", "FLG"],
+            "FLAG_DOCUMENT_6": ["DOC", "6", "FLG"],
+            "FLAG_DOCUMENT_7": ["DOC", "7", "FLG"],
+            "FLAG_DOCUMENT_8": ["DOC", "8", "FLG"],
+            "FLAG_DOCUMENT_9": ["DOC", "9", "FLG"],
+            "FLAG_DOCUMENT_10": ["DOC", "10", "FLG"],
+            "FLAG_DOCUMENT_11": ["DOC", "11", "FLG"],
+            "FLAG_DOCUMENT_12": ["DOC", "12", "FLG"],
+            "FLAG_DOCUMENT_13": ["DOC", "13", "FLG"],
+            "FLAG_DOCUMENT_14": ["DOC", "14", "FLG"],
+            "FLAG_DOCUMENT_15": ["DOC", "15", "FLG"],
+            "FLAG_DOCUMENT_16": ["DOC", "16", "FLG"],
+            "FLAG_DOCUMENT_17": ["DOC", "17", "FLG"],
+            "FLAG_DOCUMENT_18": ["DOC", "18", "FLG"],
+            "FLAG_DOCUMENT_19": ["DOC", "19", "FLG"],
+            "FLAG_DOCUMENT_20": ["DOC", "20", "FLG"],
+            "FLAG_DOCUMENT_21": ["DOC", "21", "FLG"],
+            "AMT_REQ_CREDIT_BUREAU_HOUR": ["RCB", "", "HH"],
+            "AMT_REQ_CREDIT_BUREAU_DAY": ["RCB", "", "DD"],
+            "AMT_REQ_CREDIT_BUREAU_WEEK": ["RCB", "", "WW"],
+            "AMT_REQ_CREDIT_BUREAU_MON": ["RCB", "", "MM"],
+            "AMT_REQ_CREDIT_BUREAU_QRT": ["RCB", "", "QQ"],
+            "AMT_REQ_CREDIT_BUREAU_YEAR": ["RCB", "", "YY"]
+        }
+    },
+    "groups": {
+        "bureau_balance": {
+            "target": [
+                "TARGET"
+            ],
+            "keys": [
+                "SK_ID_CURR", "SK_ID_BUREAU", "MONTHS_BALANCE"
+            ]
+        },
+        "pos_cash_balance": {
+            "target": [
+                "TARGET"
+            ],
+            "keys": [
+                "SK_ID_CURR", "SK_ID_PREV", "MONTHS_BALANCE"
+            ]
+        },
+        "credit_card_balance": {
+            "target": [
+                "TARGET"
+            ],
+            "keys": [
+                "SK_ID_CURR", "SK_ID_PREV", "MONTHS_BALANCE"
+            ],
+            "credit_limit": [
+                "AMT_CREDIT_LIMIT_ACTUAL"
+            ],
+            "balance": [
+                "AMT_BALANCE"
+            ],
+            "drawings_amt": [
+                "AMT_DRAWINGS_CURRENT", "AMT_DRAWINGS_ATM_CURRENT",
+                "AMT_DRAWINGS_POS_CURRENT", "AMT_DRAWINGS_OTHER_CURRENT"
+            ],
+            "drawings_cnt": [
+                "CNT_DRAWINGS_CURRENT", "CNT_DRAWINGS_ATM_CURRENT",
+                "CNT_DRAWINGS_POS_CURRENT", "CNT_DRAWINGS_OTHER_CURRENT"
+            ],
+            "payment": [
+                "AMT_PAYMENT_CURRENT", "AMT_PAYMENT_TOTAL_CURRENT"
+            ],
+            "installment": [
+                "AMT_INST_MIN_REGULARITY", "CNT_INSTALMENT_MATURE_CUM"
+            ],
+            "receivable": [
+                "AMT_RECEIVABLE_PRINCIPAL", "AMT_TOTAL_RECEIVABLE"
+            ],
+            "status": [
+                "NAME_CONTRACT_STATUS"
+            ],
+            "dpd": [
+                "SK_DPD", "SK_DPD_DEF"
+            ],
+            "balancing": [
+                "balance", "AMT_DRAWINGS_CURRENT", "receivable", "payment"
+            ],
+            "drawings_amt_cnt_couples": [
+                ["drawings_amt", "drawings_cnt"]
+            ],
+            "all": [
+                "keys", "status", "credit_limit", "balance",
+                "drawings_amt", "drawings_cnt", "receivable",
+                "installment", "payment", "dpd"
+            ]
+        },
+        "installments_payments": {
+            "target": [
+                "TARGET"
+            ],
+            "keys": [
+                "SK_ID_CURR", "SK_ID_PREV", "NUM_INSTALMENT_NUMBER"
+            ],
+            "ages": [
+                "DAYS_INSTALMENT", "DAYS_ENTRY_PAYMENT"
+            ],
+            "amounts": [
+                "AMT_INSTALMENT", "AMT_PAYMENT"
+            ],
+            "installment": [
+                "DAYS_INSTALMENT", "AMT_INSTALMENT"
+            ],
+            "payment": [
+                "DAYS_ENTRY_PAYMENT", "AMT_PAYMENT"
+            ]
+        },
+        "bureau": {
+            "target": [
+                "TARGET"
+            ],
+            "keys": [
+                "SK_ID_CURR", "SK_ID_BUREAU"
+            ],
+            "ages": [
+                "DAYS_CREDIT_UPDATE", "DAYS_CREDIT", "DAYS_CREDIT_ENDDATE",
+                "DAYS_ENDDATE_FACT", "CREDIT_DAY_OVERDUE"
+            ],
+            "financial_statement": [
+                "AMT_CREDIT_SUM", "AMT_CREDIT_SUM_DEBT", "AMT_CREDIT_SUM_LIMIT",
+                "AMT_CREDIT_SUM_OVERDUE", "AMT_ANNUITY"
+            ]
+        },
+        "previous_application": {
+            "target": [
+                "TARGET"
+            ],
+            "keys": [
+                "SK_ID_CURR", "SK_ID_PREV"
+            ],
+            "ages": [
+                "DAYS_DECISION", "DAYS_FIRST_DRAWING", "DAYS_FIRST_DUE",
+                "DAYS_LAST_DUE_1ST_VERSION", "DAYS_LAST_DUE", "DAYS_TERMINATION"
+            ],
+            "contract_cats": [
+                "NAME_CONTRACT_TYPE", "NAME_CONTRACT_STATUS", "CODE_REJECT_REASON"
+            ],
+            "client_cats": [
+                "NAME_CASH_LOAN_PURPOSE", "NAME_TYPE_SUITE", "NAME_CLIENT_TYPE",
+                "NAME_PAYMENT_TYPE"
+            ],
+            "sales_cats": [
+                "NAME_GOODS_CATEGORY", "NAME_PORTFOLIO", "NAME_PRODUCT_TYPE",
+                "CHANNEL_TYPE", "NAME_SELLER_INDUSTRY", "NAME_YIELD_GROUP",
+                "PRODUCT_COMBINATION"
+            ],
+            "all_cats": [
+                "contract_cats", "client_cats", "sales_cats"
+            ],
+            "last_app_flags": [
+                "FLAG_LAST_APPL_PER_CONTRACT", "NFLAG_LAST_APPL_IN_DAY"
+            ]
+        },
+        "application": {
+            "target": [
+                "TARGET"
+            ],
+            "keys": [
+                "SK_ID_CURR"
+            ],
+            "gender": [
+                "CODE_GENDER"
+            ],
+            "financial_statement": [
+                "AMT_INCOME_TOTAL", "AMT_CREDIT", "AMT_ANNUITY", "AMT_GOODS_PRICE"
+            ],
+            "family_counts": [
+                "CNT_FAM_MEMBERS", "CNT_CHILDREN"
+            ],
+            "ages": [
+                "DAYS_BIRTH", "DAYS_EMPLOYED", "DAYS_REGISTRATION",
+                "DAYS_ID_PUBLISH", "DAYS_LAST_PHONE_CHANGE"
+            ],
+            "process_start": [
+                "WEEKDAY_APPR_PROCESS_START", "HOUR_APPR_PROCESS_START"
+            ],
+            "region_ratings": [
+                "REGION_RATING_CLIENT", "REGION_RATING_CLIENT_W_CITY"
+            ],
+            "contact_flags": [
+                "FLAG_MOBIL", "FLAG_EMP_PHONE", "FLAG_WORK_PHONE",
+                "FLAG_CONT_MOBILE", "FLAG_PHONE", "FLAG_EMAIL"
+            ],
+            "commute_flags": [
+                "REG_REGION_NOT_LIVE_REGION", "REG_REGION_NOT_WORK_REGION",
+                "LIVE_REGION_NOT_WORK_REGION", "REG_CITY_NOT_LIVE_CITY",
+                "REG_CITY_NOT_WORK_CITY", "LIVE_CITY_NOT_WORK_CITY"
+            ],
+            "ownership_flags": [
+                "FLAG_OWN_CAR", "FLAG_OWN_REALTY"
+            ],
+            "housing_means": [
+                "APARTMENTS_AVG", "BASEMENTAREA_AVG", "YEARS_BEGINEXPLUATATION_AVG",
+                "YEARS_BUILD_AVG", "COMMONAREA_AVG", "ELEVATORS_AVG",
+                "ENTRANCES_AVG", "FLOORSMAX_AVG", "FLOORSMIN_AVG",
+                "LANDAREA_AVG", "LIVINGAPARTMENTS_AVG", "LIVINGAREA_AVG",
+                "NONLIVINGAPARTMENTS_AVG", "NONLIVINGAREA_AVG"
+            ],
+            "housing_medians": [
+                "APARTMENTS_MEDI", "BASEMENTAREA_MEDI", "YEARS_BEGINEXPLUATATION_MEDI",
+                "YEARS_BUILD_MEDI", "COMMONAREA_MEDI", "ELEVATORS_MEDI",
+                "ENTRANCES_MEDI", "FLOORSMAX_MEDI", "FLOORSMIN_MEDI",
+                "LANDAREA_MEDI", "LIVINGAPARTMENTS_MEDI", "LIVINGAREA_MEDI",
+                "NONLIVINGAPARTMENTS_MEDI", "NONLIVINGAREA_MEDI"
+            ],
+            "housing_modes": [
+                "APARTMENTS_MODE", "BASEMENTAREA_MODE", "YEARS_BEGINEXPLUATATION_MODE",
+                "YEARS_BUILD_MODE", "COMMONAREA_MODE", "ELEVATORS_MODE",
+                "ENTRANCES_MODE", "FLOORSMAX_MODE", "FLOORSMIN_MODE",
+                "LANDAREA_MODE", "LIVINGAPARTMENTS_MODE", "LIVINGAREA_MODE",
+                "NONLIVINGAPARTMENTS_MODE", "NONLIVINGAREA_MODE"
+            ],
+            "housing_stats_complement": [
+                "TOTALAREA_MODE", "FONDKAPREMONT_MODE", "HOUSETYPE_MODE",
+                "WALLSMATERIAL_MODE", "EMERGENCYSTATE_MODE"
+            ],
+            "housing_stats": [
+                "housing_means", "housing_medians", "housing_modes"
+            ],
+            "social_circle_counts": [
+                "OBS_30_CNT_SOCIAL_CIRCLE", "DEF_30_CNT_SOCIAL_CIRCLE",
+                "OBS_60_CNT_SOCIAL_CIRCLE", "DEF_60_CNT_SOCIAL_CIRCLE"
+            ],
+            "credit_bureau_request_counts": [
+                "AMT_REQ_CREDIT_BUREAU_HOUR", "AMT_REQ_CREDIT_BUREAU_DAY",
+                "AMT_REQ_CREDIT_BUREAU_WEEK", "AMT_REQ_CREDIT_BUREAU_MON",
+                "AMT_REQ_CREDIT_BUREAU_QRT", "AMT_REQ_CREDIT_BUREAU_YEAR"
+            ]
+        }
+    }
+}

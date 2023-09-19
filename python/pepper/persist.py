@@ -4,13 +4,13 @@ from pepper.utils import create_if_not_exist
 import pandas as pd
 
 
-def _get_filenames_glob(
+def get_filenames_glob(
     root_dir: str,
     ext: Optional[str] = None,
     recursive: bool = False
 ) -> List[str]:
     """
-    Returns a list of filenames in the specified directory
+    Return a list of filenames in the specified directory
     using glob pattern matching.
 
     Parameters
@@ -62,6 +62,10 @@ def all_to_parquet(
     -------
     None
     """
+    # Ensure target_dir ends with a slash
+    if not target_dir.endswith('/'):
+        target_dir += '/'
+
     create_if_not_exist(target_dir)
     for name, data in datadict.items():
         print(".", end="")

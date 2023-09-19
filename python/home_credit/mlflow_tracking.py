@@ -15,7 +15,8 @@ def do_first_experiment(
     clf: ClassifierMixin,
     imb_sampler: Union[BaseSampler, None] = under_sampling.RandomUnderSampler(random_state=42)
 ) -> None:
-    """Trains and evaluate a given classifier on a specified dataset using
+    """
+    Train and evaluate a given classifier on a specified dataset using
     k-fold cross validation, and log the results and relevant metrics to mlflow.
     Saves the trained classifier as a reusable model artifact.
 
@@ -31,7 +32,7 @@ def do_first_experiment(
         Classifier to train and evaluate.
     """
     print("default `mlruns/`:", mlflow.get_tracking_uri())
-    mlflow.set_tracking_uri("file://" + get_mlflow_dir())
+    mlflow.set_tracking_uri(f"file://{get_mlflow_dir()}")
     print("this project `mlruns/`:", mlflow.get_tracking_uri())
 
     #experiment = "train_baseline_10k"

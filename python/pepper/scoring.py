@@ -1,7 +1,6 @@
-from typing import *
+from typing import List, Dict, Callable
 
 from pepper.utils import print_subtitle, bold
-#from flipkart_utils import get_class_label_name_map
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -18,7 +17,15 @@ from sklearn.metrics import (
 )
 
 
-def get_similarity_score_fn_dict():
+def get_similarity_score_fn_dict() -> Dict[str, Callable]:
+    """
+    Get a dictionary of similarity score functions for model evaluation.
+
+    Returns
+    -------
+    Dict[str, Callable]
+        A dictionary where keys are similarity score names and values are callable functions.
+    """
     # For each of them, the best is 1 en the worst is 0
     return {
         "precision": precision_score,
@@ -30,7 +37,27 @@ def get_similarity_score_fn_dict():
     }
 
 
-def global_similarity_report(cla_labels, clu_labels, indent=0):
+def global_similarity_report(
+    cla_labels: List,
+    clu_labels: List,
+    indent: int = 0
+) -> None:
+    """
+    Generate a global similarity report between classification labels and cluster labels.
+
+    Parameters
+    ----------
+    cla_labels : List
+        List of true classification labels.
+    clu_labels : List
+        List of cluster labels.
+    indent : int, optional
+        Indentation level for printing the report, by default 0.
+
+    Returns
+    -------
+    None
+    """
     print_subtitle("Global similarity report")
 
     score_funcs = get_similarity_score_fn_dict()  # Best is 1, worst is 0
@@ -56,7 +83,27 @@ def global_similarity_report(cla_labels, clu_labels, indent=0):
             )
 
 
-def local_similarity_report(cla_labels, clu_labels, indent=0):
+def local_similarity_report(
+    cla_labels: List,
+    clu_labels: List,
+    indent: int = 0
+) -> None:
+    """
+    Generate a local similarity report between classification labels and cluster labels.
+
+    Parameters
+    ----------
+    cla_labels : List
+        List of true classification labels.
+    clu_labels : List
+        List of cluster labels.
+    indent : int, optional
+        Indentation level for printing the report, by default 0.
+
+    Returns
+    -------
+    None
+    """
     print_subtitle("Local similarity report")
     
     score_funcs = get_similarity_score_fn_dict()  # Best is 1, worst is 0
@@ -81,7 +128,8 @@ def show_confusion_matrix(
     clu_labels: List[int],
     cl_names: List[str]
 ) -> None:
-    r"""Displays confusion matrix with predicted and true class labels.
+    """
+    Display confusion matrix with predicted and true class labels.
 
     Parameters
     ----------
@@ -131,7 +179,8 @@ def display_classification_report(
     clu_labels: List[int],
     cl_names: List[str]
 ) -> None:
-    r"""Displays classification report with metrics for each class.
+    """
+    Display classification report with metrics for each class.
 
     Parameters
     ----------
@@ -158,7 +207,8 @@ def show_multilabel_confusion_matrixes(
     clu_labels: List[int],
     cl_names: List[str]
 ) -> None:
-    r"""Displays multiple confusion matrices for multilabel classification.
+    """
+    Display multiple confusion matrices for multilabel classification.
 
     Parameters
     ----------

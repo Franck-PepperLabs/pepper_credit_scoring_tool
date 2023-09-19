@@ -32,22 +32,48 @@ from pepper.env import get_img_dir
 """ Locale
 """
 
-# Ex. f"{123456789:n}" : 123 456 789
-def get_default_locale():
+def get_default_locale() -> str:
+    """
+    Get the default locale string for formatting.
+
+    Returns
+    -------
+    str
+        The default locale string, e.g., "fr_FR.UTF-8".
+    """
     return "fr_FR.UTF-8"
 
 
+# Ex. f"{123456789:n}" : 123 456 789
 locale.setlocale(locale.LC_ALL, get_default_locale())
 
 
-def get_weekdays(target_locale=None):
+def get_weekdays(target_locale: str = None) -> list:
+    """
+    Get the weekdays' names in the specified or default locale.
+
+    Parameters
+    ----------
+    target_locale : str, optional
+        The target locale string for formatting the weekdays, e.g., "en_US.UTF-8".
+        If not provided, the default locale will be used.
+
+    Returns
+    -------
+    list of str
+        A list of weekday names in uppercase for the specified or default locale.
+
+    Example
+    -------
+    >>> get_weekdays("en_US.UTF-8")
+    ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
+    """
     if target_locale is None:
         target_locale = "en_US.UTF-8"
     locale.setlocale(locale.LC_ALL, target_locale)
     weekdays = [day.upper() for day in calendar.day_name]
     locale.setlocale(locale.LC_ALL, get_default_locale())
     return weekdays
-
 
 
 def cls():
@@ -127,7 +153,8 @@ def display_dataframe_in_markdown(
     data: pd.DataFrame,
     show_index: bool = False
 ) -> None:
-    """Displays a DataFrame as a Markdown table.
+    """
+    Display a DataFrame as a Markdown table.
 
     Parameters
     ----------
@@ -196,7 +223,8 @@ def display_file_link(
     filepath: str,
     desc: Optional[str] = None
 ) -> None:
-    """Displays a clickable file link to the given file path.
+    """
+    Display a clickable file link to the given file path.
 
     Parameters
     ----------
@@ -269,7 +297,8 @@ def discrete_stats(
     data: pd.DataFrame,
     name: Optional[Union[str, None]] = None
 ) -> pd.DataFrame:
-    """Calculates discrete statistics of a pandas DataFrame.
+    """
+    Calculate discrete statistics of a pandas DataFrame.
 
     Parameters
     ----------
@@ -296,7 +325,7 @@ def discrete_stats(
     >>> from pepper_utils import discrete_stats
     >>> data = pd.DataFrame({'A': [1, 2, 3, np.nan], 'B': ['cat', 'dog', 'dog', 'dog']})
     >>> discrete_stats(data, name='test')
-             n  n_u  n_na     Fill rate  Shannon entropy   dtypes
+             n  n_u  n_na     Fill rate   Diversity rate   dtypes
     test
     A        3    3     1      0.750000         0.750000  float64
     B        3    2     0      1.000000         0.666667   object
@@ -308,12 +337,12 @@ def discrete_stats(
     n_u = data.nunique()
     n_na = data.isna().sum()
     stats = pd.DataFrame({
-        'n': n,
-        'n_u': n_u,
-        'n_na': n_na,
-        'Fill rate': n / (n + n_na),
-        'Diversity rate': n_u / n,
-        'dtypes': data.dtypes
+        "n": n,
+        "n_u": n_u,
+        "n_na": n_na,
+        "Fill rate": n / (n + n_na),
+        "Diversity rate": n_u / n,
+        "dtypes": data.dtypes
     }, index=list(data.columns))
 
     stats.index.name = name if name is not None else data.index.name
@@ -356,13 +385,13 @@ def plot_discrete_stats(
     table_name = stats.index.name
     if table_name is None:
         table_name = "Jane DOE"
-    filling_rate = stats[["Filling rate", ]].copy()
-    na_rate = 1 - filling_rate["Filling rate"]
+    filling_rate = stats[["Fill rate", ]].copy()
+    na_rate = 1 - filling_rate["Fill rate"]
     filling_rate.insert(0, "NA_", na_rate)
     filling_rate = filling_rate * 100
     filling_rate.columns = ["NA", "Filled"]
 
-    shannon_entropy = stats["Shannon entropy"]
+    shannon_entropy = stats["Diversity rate"]
     shannon_entropy = np.maximum(shannon_entropy * 100, precision)
 
     # Create stacked bar chart
@@ -381,13 +410,13 @@ def plot_discrete_stats(
         color="black",
         edgecolors="white"
     )
-    plt.legend([ax2], ["Shannon entropy"], loc="upper left", bbox_to_anchor=(1, .8))
+    plt.legend([ax2], ["Diversity rate"], loc="upper left", bbox_to_anchor=(1, .8))
 
     plt.yscale("log")
     plt.ylim(precision, 100)
 
     # Axis titles
-    plt.ylabel("Filling rate & Shannon entropy")
+    plt.ylabel("Fill & Diversity rates")
     plt.xlabel("")
 
     # Rotate x-axis labels
@@ -437,7 +466,8 @@ def show_discrete_stats(
 
 
 def create_if_not_exist(dir: str) -> None:
-    """Creates a directory if it doesn't already exist.
+    """
+    Create a directory if it doesn't already exist.
 
     Parameters
     ----------
@@ -459,7 +489,8 @@ def for_all(
     const_args: Optional[Tuple[Any, ...]] = None,
     const_kwargs: Optional[Dict[str, Any]] = None
 ) -> Union[None, Any, List[Any]]:
-    """Applies a function to a vector of arguments and/or keyword arguments.
+    """
+    Apply a function to a vector of arguments and/or keyword arguments.
 
     If `args_vect` and `kwargs_vect` are provided, apply
     `f(*args_vect[i], **kwargs_vect[i])` to each corresponding pair
@@ -578,7 +609,6 @@ def for_all(
 """
 
 
-# TODO: DEPRECATE: Note > I have identified a similar function in Dask.
 def format_iB(n_bytes: int) -> Tuple[float, str]:
     """Returns a tuple with the amount of memory and its unit in bytes.
 
@@ -639,7 +669,8 @@ def get_file_size(file_path: str) -> int:
 
 
 def print_file_size(file_path: str) -> None:
-    """Prints the size of a file in bytes.
+    """
+    Print the size of a file in bytes.
 
     Parameters
     ----------

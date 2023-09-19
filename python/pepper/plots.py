@@ -1,21 +1,43 @@
-from typing import Tuple  # Optional, Union, 
+from typing import Tuple, Optional, List
+
+import locale
+locale.setlocale(locale.LC_ALL, "")
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-# from matplotlib.figure import Figure
+
 from pepper.utils import save_and_show
-import locale
-locale.setlocale(locale.LC_ALL, '')
 
 
 def show_cat_mod_counts(
-    cat,
-    order=None,
-    ax=None,
-    rotate_labels=True,
-    title=None
-):
+    cat: pd.Series,
+    order: Optional[Tuple] = None,
+    ax: Optional[plt.Axes] = None,
+    rotate_labels: bool = True,
+    title: Optional[str] = None
+) -> None:
+    """
+    Display counts of categorical modality occurrences.
+
+    Parameters
+    ----------
+    cat : pd.Series
+        Categorical data to display.
+    order : Optional[Tuple], optional
+        Order of modality display, by default None.
+    ax : Optional[plt.Axes], optional
+        Matplotlib axes to use for the plot, by default None.
+    rotate_labels : bool, optional
+        Whether to rotate x-axis tick labels, by default True.
+    title : Optional[str], optional
+        Title for the plot, by default None.
+
+    Returns
+    -------
+    None
+    """
     fig = None
     if ax is None:
         figsize = (max(10, cat.nunique()), 6)
@@ -54,11 +76,29 @@ def show_cat_mod_counts(
     
 
 def show_cat_mod_counts_gallery(
-    data,
-    columns,
-    ncols=2,
-    rotate_labels=True
-):
+    data: pd.DataFrame,
+    columns: List[str],
+    ncols: int = 2,
+    rotate_labels: bool = True
+) -> None:
+    """
+    Display a gallery of counts of categorical modality occurrences.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The DataFrame containing the categorical data.
+    columns : List[str]
+        List of column names to display.
+    ncols : int, optional
+        Number of columns in the gallery, by default 2.
+    rotate_labels : bool, optional
+        Whether to rotate x-axis tick labels, by default True.
+
+    Returns
+    -------
+    None
+    """
     n = len(columns)
     nrows = n // ncols + (n % ncols > 0)
     fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(4*ncols, 3*nrows))
@@ -80,7 +120,8 @@ def lin_log_tetra_histplot(
     title: str = None,
     max_bins: int = int(8*365.25)
 ) -> None:
-    """Plots a four histograms of the same data with two axes in linear scale
+    """
+    Plot a four histograms of the same data with two axes in linear scale
     and two axes in log scale.
 
     Parameters

@@ -12,7 +12,8 @@ class Cache:
 
     @staticmethod
     def _is_identifier(identifier: str) -> bool:
-        """Checks if the given string is a valid identifier.
+        """
+        Check if the given string is a valid identifier.
 
         Parameters
         ----------
@@ -28,8 +29,8 @@ class Cache:
         return re.search(r"^[A-Za-z_][A-Za-z0-9_]*$", identifier) is not None
 
     @staticmethod
-    def clear():
-        """Clears the entire cache."""
+    def clear() -> None:
+        """Clear the entire cache."""
         with Cache._lock:
             # critical section, accessing _data and _loader
             Cache._data.clear()
@@ -37,7 +38,8 @@ class Cache:
 
     @staticmethod
     def exists(table_name: str) -> bool:
-        """Checks if cache exists for a table.
+        """
+        Check if cache exists for a table.
 
         Parameters
         ----------
@@ -67,7 +69,8 @@ class Cache:
 
     @staticmethod
     def get(table_name: str) -> pd.DataFrame:
-        """Retrieves the cache for a given table.
+        """
+        Retrieve the cache for a given table.
 
         Parameters
         ----------
@@ -102,7 +105,8 @@ class Cache:
         table_name: str,
         table: pd.DataFrame
     ) -> pd.DataFrame:
-        """Sets the cache for a given table.
+        """
+        Set the cache for a given table.
 
         Parameters
         ----------
@@ -143,7 +147,8 @@ class Cache:
         table_name: str,
         loader: Callable[[], pd.DataFrame]
     ) -> pd.DataFrame:
-        """Initializes the cache for a table. If the cache for the table does
+        """
+        Initialize the cache for a table. If the cache for the table does
         not exist, it is loaded using the corresponding cache loader.
 
         Parameters
@@ -170,7 +175,8 @@ class Cache:
 
     @staticmethod
     def _reset_cache(table_name: str) -> pd.DataFrame:
-        """Resets the cache for a table, by loading it again using the
+        """
+        Reset the cache for a table, by loading it again using the
         corresponding cache loader.
 
         Parameters

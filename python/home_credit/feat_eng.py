@@ -18,7 +18,8 @@ from home_credit.utils import _not_in_subs_table_idx
 def nullify_365243(
     data: Union[pd.Series, pd.DataFrame]
 ) -> None:
-    """Replaces occurrences of the value 365243 by None in a pandas Series or
+    """
+    Replace occurrences of the value 365243 by None in a pandas Series or
     DataFrame.
     
     Parameters
@@ -36,7 +37,8 @@ def nullify_365243(
 def nullify_XNA(
     data: Union[pd.Series, pd.DataFrame]
 ) -> None:
-    """Replaces occurrences of the value `'XNA'` by None in a pandas Series or
+    """
+    Replaces occurrences of the value `'XNA'` by None in a pandas Series or
     DataFrame.
     
     Parameters
@@ -54,7 +56,8 @@ def nullify_XNA(
 def negate_numerical_data(
     data: Union[pd.Series, pd.DataFrame]
 ) -> None:
-    """Replaces all numerical values in a pandas DataFrame or Series by their
+    """
+    Replace all numerical values in a pandas DataFrame or Series by their
     opposite value.
     
     Parameters
@@ -79,7 +82,8 @@ def negate_numerical_data(
 
 
 def drop_no_last_app_rows(prev_app: pd.DataFrame) -> None:
-    """Drops rows from a DataFrame that do not represent the last application
+    """
+    Drop rows from a DataFrame that do not represent the last application
     per contract.
 
     Parameters
@@ -112,7 +116,63 @@ def drop_no_last_app_rows(prev_app: pd.DataFrame) -> None:
 """
 
 
-def eval_contracts_status(x):
+def eval_contracts_status(x: str) -> str:
+    """
+    Evaluate the status of credit contracts in the context of post-processing NAME_CONTRACT_STATUS.
+
+    This function is designed for post-processing the 'NAME_CONTRACT_STATUS' column to reduce
+    combinations resulting from concatenation of contract statuses. The function evaluates
+    the status of credit contracts and returns one of the following: 'Active', 'Signed',
+    'Completed', 'Demand', or the original value if none of these statuses are found.
+
+    Parameters
+    ----------
+    x : str
+        The input value representing the status of credit contracts in a concatenated form.
+
+    Returns
+    -------
+    str
+        The evaluated status of the credit contracts.
+
+    Notes
+    -----
+    - If the input value `x` is `NaN` or an integer, the function returns `NaN`.
+    - The function searches for specific keywords ('Active', 'Signed', 'Completed', 'Demand') in
+      the input string and returns the first match found.
+    - If none of the keywords are found, the original input value `x` is returned.
+
+    Examples
+    --------
+    >>> eval_contracts_status("Active and Completed")
+    'Active'
+    
+    >>> eval_contracts_status("Signed and Demand")
+    'Signed'
+
+    >>> eval_contracts_status("Unknown")
+    'Unknown'
+
+    >>> eval_contracts_status(np.nan)
+    NaN
+
+    Context
+    -------
+    This function is intended for post-processing the 'NAME_CONTRACT_STATUS' column when dealing
+    with aggregated data. It helps reduce the complexity of contract status combinations.
+
+    Usage
+    -----
+    Example usage within the context of aggregating 'multis' data:
+    ```
+    from home_credit.feat_eng import eval_contracts_status
+
+    grouped_multis.NAME_CONTRACT_STATUS = (
+        grouped_multis.NAME_CONTRACT_STATUS
+        .apply(eval_contracts_status)
+    )
+    ```
+    """
     if pd.isnull(x) or isinstance(x, int):
         return np.nan
     return next(
@@ -128,7 +188,8 @@ def eval_contracts_status(x):
 def divide_rle(
     rle: Optional[np.ndarray]
 ) -> Tuple[int, int, int, Optional[Tuple[Tuple[str, int]]]]:
-    """Given a Run Length Encoded (RLE) numpy array, returns a tuple containing
+    """
+    Given a Run Length Encoded (RLE) numpy array, returns a tuple containing
     the number of closed frames, the total number of tracked frames, the number
     of frames not tracked, and a tuple representation of the RLE array
     containing the track status and frame counts for each frame.
@@ -189,10 +250,9 @@ def _is_in_subs_table(
     subs_table_name: str,
     key: str
 ) -> pd.Series:
-    """Determine whether a record from the main table is present in a
+    """
+    Determine whether a record from the main table is present in a
     subsidiary table.
-
-    markdown
 
     Parameters
     ----------
@@ -219,7 +279,8 @@ def is_in_ext(
     subs_table_names: List[str],
     var_names: Union[List[str], None] = None
 ) -> pd.DataFrame:
-    """Returns a DataFrame containing new features indicating if a record is
+    """
+    Return a DataFrame containing new features indicating if a record is
     present in each subsidiary table.
 
     Parameters

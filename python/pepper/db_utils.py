@@ -15,14 +15,73 @@ from pepper.utils import discrete_stats, set_plot_title, save_and_show
 """
 
 
-def table_discrete_stats(table_name, table):
+def table_discrete_stats(
+    table_name: str,
+    table: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    Calculate discrete statistics for a table and add the table name as a column.
+
+    Parameters
+    ----------
+    table_name : str
+        The name of the table.
+    table : pd.DataFrame
+        The DataFrame for which to compute statistics.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing discrete statistics for the input table with an additional
+        'table_name' column.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from pepper.utils import discrete_stats
+    >>> data = pd.DataFrame({'A': [1, 2, 3, np.nan], 'B': ['cat', 'dog', 'dog', 'dog']})
+    >>> table_discrete_stats('test', data)
+    table_name   col  n  n_u  n_na  Fill rate  Diversity rate   dtypes
+    0           test    A  3    3     1      0.750000         0.750000  float64
+    1           test    B  3    2     0      1.000000         0.666667   object
+    """
     stats = discrete_stats(table)
-    stats.reset_index(inplace=True, names='col')
-    stats.insert(loc=0, column='table_name', value=table_name)
+    stats.reset_index(inplace=True, names="col")
+    stats.insert(loc=0, column="table_name", value=table_name)
     return stats
 
 
-def db_discrete_stats(table_dict):
+def db_discrete_stats(
+    table_dict: Dict[str, pd.DataFrame]
+) -> pd.DataFrame:
+    """
+    Calculate discrete statistics for multiple tables in a database.
+
+    Parameters
+    ----------
+    table_dict : Dict[str, pd.DataFrame]
+        A dictionary where keys are table names and values are DataFrames
+        representing the tables.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing discrete statistics for all tables in the database.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from pepper.utils import discrete_stats
+    >>> data1 = pd.DataFrame({'A': [1, 2, 3, np.nan], 'B': ['cat', 'dog', 'dog', 'dog']})
+    >>> data2 = pd.DataFrame({'X': [4, 5, 6], 'Y': [1.2, 3.4, 5.6]})
+    >>> table_dict = {'table1': data1, 'table2': data2}
+    >>> db_discrete_stats(table_dict)
+    table_name   col  n  n_u  n_na  Fill rate  Diversity rate   dtypes
+    0       table1    A  3    3     1      0.750000         0.750000  float64
+    1       table1    B  3    2     0      1.000000         0.666667   object
+    2       table2    X  3    3     0      1.000000         1.000000  int64
+    3       table2    Y  3    3     0      1.000000         1.000000  float64
+    """
     return pd.concat([
         table_discrete_stats(table_name, table)
         for table_name, table in table_dict.items()
@@ -34,11 +93,12 @@ def db_discrete_stats(table_dict):
 
 
 def set_pk_index(
-        data: pd.DataFrame,
-        pk_columns: Union[str, List[str]],
-        pk_name: Optional[str] = None
+    data: pd.DataFrame,
+    pk_columns: Union[str, List[str]],
+    pk_name: Optional[str] = None
 ):
-    """Sets the primary key index of the data table.
+    """
+    Set the primary key index of the data table.
 
     Parameters
     ----------
@@ -86,7 +146,8 @@ def cast_columns(
     cols: Union[str, List[str]],
     dtype: Type
 ):
-    """Casts the specified columns in the dataframe to the specified dtype.
+    """
+    Cast the specified columns in the dataframe to the specified dtype.
 
     Parameters
     ----------
@@ -137,10 +198,10 @@ def cast_columns(
             )
 
     # Proceed the cast
-    data[cols] = data[cols].astype(dtype, copy=False)
+    data[cols] = data[cols].astype(dtype)  #, copy=False)
 
 
-""" Relationaships, arities
+""" Relationships, arities
 """
 
 
@@ -164,24 +225,25 @@ def count_of_objets_A_by_objet_B(
     -------
     count_freq : pd.DataFrame
         Count and frequency of `col_A` values by `col_B` values.
-    gpby : pd.DataFrame
+    grouped : pd.DataFrame
         Result of the grouping.
     """
-    gpby = table[[col_A, col_B]].groupby(by=col_B).count()
-    count = gpby[col_A].value_counts().rename('count')
-    freq = gpby[col_A].value_counts(normalize=True).rename('freq')
+    grouped = table[[col_A, col_B]].groupby(by=col_B).count()
+    count = grouped[col_A].value_counts().rename("count")
+    freq = grouped[col_A].value_counts(normalize=True).rename("freq")
     count_freq = pd.concat([count, freq], axis=1)
-    count_freq.index.name = f'{col_A} by {col_B}'
-    count_freq['count'] = count_freq['count'].astype(int)
-    return count_freq, gpby
+    count_freq.index.name = f"{col_A} by {col_B}"
+    count_freq["count"] = count_freq["count"].astype(int)
+    return count_freq, grouped
 
 
 def out_of_intersection_v1(
-   table_A: pd.DataFrame,
-   table_B: pd.DataFrame,
-   pk_name: str
+    table_A: pd.DataFrame,
+    table_B: pd.DataFrame,
+    pk_name: str
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Find the primary keys that are in one table but not the other.
+    """
+    Find the primary keys that are in one table but not the other.
 
     DEPRECATED [Bad perf] Use `out_of_intersection` instead
 
@@ -217,7 +279,8 @@ def print_out_of_intersection(
     table_B: pd.DataFrame,
     pk_name: str
 ) -> None:
-    """Print the number and percentage of primary keys that are in one table
+    """
+    Print the number and percentage of primary keys that are in one table
     but not the other.
 
     Parameters
@@ -226,7 +289,7 @@ def print_out_of_intersection(
         First table.
     table_B : pd.DataFrame
         Second table.
-    - pk_name : str
+    pk_name : str
         Name of the primary key column.
     """
     (
@@ -234,17 +297,15 @@ def print_out_of_intersection(
     ) = out_of_intersection(table_A, table_B, pk_name)
     name_A = table_A.columns.name
     name_B = table_B.columns.name
-    print(f'|{name_A}.{pk_name}| :', len(pk_A))
-    print(f'|{name_B}.{pk_name}| :', len(pk_B))
+    print(f"|{name_A}.{pk_name}| : {len(pk_A)}")
+    print(f"|{name_B}.{pk_name}| : {len(pk_B)}")
     print(
-        f'|{name_A}.{pk_name} \\ {name_B}.{pk_name}| :',
-        len(pk_A_not_B),
-        '(' + str(round(100 * len(pk_A_not_B) / len(pk_A), 3)) + '%)'
+        f"|{name_A}.{pk_name} \\ {name_B}.{pk_name}| : {len(pk_A_not_B)}",
+        f"({str(round(100 * len(pk_A_not_B) / len(pk_A), 3))}%)",
     )
     print(
-        f'|{name_B}.{pk_name} \\ {name_A}.{pk_name}| :',
-        len(pk_B_not_A),
-        '(' + str(round(100 * len(pk_B_not_A) / len(pk_B), 3)) + '%)'
+        f"|{name_B}.{pk_name} \\ {name_A}.{pk_name}| : {len(pk_B_not_A)}",
+        f"({str(round(100 * len(pk_B_not_A) / len(pk_B), 3))}%)",
     )
 
 
@@ -253,7 +314,8 @@ def display_relation_arities(
     table_B: pd.DataFrame, fk_B: str,
     verbose: bool = False
 ) -> Tuple[pd.DataFrame, pd.DataFrame, float, float, float, float]:
-    """Compute and display statistics about the relation between two tables.
+    """
+    Compute and display statistics about the relation between two tables.
 
     Parameters
     ----------
@@ -282,16 +344,16 @@ def display_relation_arities(
     ba_max = ba.index.max()
 
     print(
-        'relation arities : '
-        f'[{name_A}]({ab_min}..{ab_max})'
-        f'--({ba_min}..{ba_max})[{name_B}]'
+        "relation arities : "
+        f"[{name_A}]({ab_min}..{ab_max})"
+        f"--({ba_min}..{ba_max})[{name_B}]"
     )
 
     ab = ab.T
-    ab.insert(0, 'sum', ab.T.sum())
+    ab.insert(0, "sum", ab.T.sum())
 
     ba = ba.T
-    ba.insert(0, 'sum', ba.T.sum())
+    ba.insert(0, "sum", ba.T.sum())
 
     if verbose:
         display(ab)
@@ -305,11 +367,12 @@ def display_relation_arities(
 
 
 def out_of_intersection(
-   table_A: pd.DataFrame,
-   table_B: pd.DataFrame,
-   pk_name: str
+    table_A: pd.DataFrame,
+    table_B: pd.DataFrame,
+    pk_name: str
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Find the primary keys that are in one table but not the other.
+    """
+    Find the primary keys that are in one table but not the other.
 
     Parameters
     ----------
@@ -343,7 +406,8 @@ def is_in_A_but_not_in_B_matrix(
     key: str,
     normalize: bool = False
 ) -> np.ndarray:
-    """Calculates the matrix indicating the number of unique values in the
+    """
+    Calculate the matrix indicating the number of unique values in the
     primary key column of each table that are not present in the primary key
     column of other tables. Returns the matrix as a NumPy array.
 
@@ -375,13 +439,13 @@ def is_in_A_but_not_in_B_matrix(
     # timeit!
     pks = [t[key].drop_duplicates() for t in table_dict.values()]
 
-    # Perform the asymmetric difference for each couple of tables
+    # Perform the anp.union1d(row_pk, col_pk).shape[0] if normalize else 1
     # TODO changer pour utiliser en une fois is_in_A_and_in_B_matrix si normalize = True
     return np.array([
         [
             (
                 np.setdiff1d(row_pk, col_pk, assume_unique=True).shape[0]
-                / (1 if not normalize else np.union1d(row_pk, col_pk).shape[0])
+                / (np.union1d(row_pk, col_pk).shape[0] if normalize else 1)
             )
             for col_pk in pks
         ]
@@ -393,7 +457,8 @@ def is_in_A_and_in_B_matrix(
     table_dict: Dict[str, pd.DataFrame],
     key: str
 ) -> np.ndarray:
-    """Calculates the matrix indicating the number of unique values in the
+    """
+    Calculate the matrix indicating the number of unique values in the
     primary key column of each table that are present in the primary key column
     of other tables. Returns the matrix as a NumPy array.
 
@@ -435,7 +500,8 @@ def display_is_in_A_but_not_in_B_heatmap(
     normalize: bool = False,
     ratio: float = 1.0
 ) -> np.ndarray:
-    """Displays the heatmap indicating the number of unique values in the
+    """
+    Display the heatmap indicating the number of unique values in the
     primary key column of each table that are not present in the primary
     key column of other tables.
 
@@ -504,7 +570,7 @@ def display_is_in_A_but_not_in_B_heatmaps(
     ratio: float = 1.25
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Displays two heatmaps indicating the number and percentage of unique values
+    Display two heatmaps indicating the number and percentage of unique values
     in the primary key column of each table that are not present in the primary
     key column of other tables.
 
@@ -582,8 +648,6 @@ def display_is_in_A_but_not_in_B_heatmaps(
     
     # Return the matrices
     return mx, umx
-
-
 
 
 def test_1_is_in_A_but_not_in_B(table_dict, n_iter = 1_000):

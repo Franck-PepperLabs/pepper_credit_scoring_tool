@@ -1,13 +1,16 @@
-from typing import Optional, Union, Tuple
+from typing import Optional, Dict, Tuple, Callable
+
+import locale
+locale.setlocale(locale.LC_ALL, "")
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 # from matplotlib.figure import Figure
+
 from pepper.utils import save_and_show
-import locale
-locale.setlocale(locale.LC_ALL, '')
 
 from home_credit.utils import get_class_label_name_map
 
@@ -15,12 +18,13 @@ from home_credit.utils import get_class_label_name_map
 def by_target_class_kdeplot(
     targeted_data: pd.DataFrame,
     var_name: str,
-    transf_var: Optional[callable] = None,
+    transf_var: Optional[Callable[[pd.Series], pd.Series]] = None,
     var_rename: Optional[str] = None,
-    ax: Axes = None,
-    figsize: Tuple[int, int] = (8, 3),
+    ax: Optional[Axes] = None,
+    figsize: Tuple[int, int] = (8, 3)
 ) -> None:
-    """Plots the kernel density estimation (KDE) distribution of a variable by
+    """
+    Plot the kernel density estimation (KDE) distribution of a variable by
     target class.
 
     Parameters
@@ -30,16 +34,27 @@ def by_target_class_kdeplot(
     var_name : str
         The name of the variable to plot.
     transf_var : callable, optional
-        A function to apply to `var_name` before plotting. Default to None.
+        A function to apply to `var_name` before plotting.
+        Default to None.
     var_rename : str, optional
-        The label to use for `var_name` in the plot. Default to None.
+        The label to use for `var_name` in the plot.
+        Default to None.
+    ax : Axes, optional
+        The Matplotlib Axes object to use for the plot.
+        If not provided, a new figure and Axes will be created.
+        Default is None.
+    figsize : Tuple[int, int], optional
+        The size of the figure if `ax` is not provided.
+        Default is (8, 3).
 
     Example
     -------
     >>> by_target_class_kdeplot(
     >>>     data, "DAYS_BIRTH",
     >>>     transf_var=lambda s: -s / 365.25,
-    >>>     var_rename="Age (years)"
+    >>>     var_rename="Age (years)",
+    >>>     ax=None,
+    >>>     figsize=(8, 3)
     >>> )
     """
     target = targeted_data.TARGET
@@ -78,12 +93,47 @@ def by_target_class_kdeplot(
 
 
 def datablock_by_target_class_kdeplot(
-    targeted_data_block,
-    var_renames=None,
+    targeted_data_block: pd.DataFrame,
+    var_renames: Optional[Dict[str, str]] = None,
     transf_var: Optional[callable] = None,
     single_figsize: Tuple[int, int] = (8, 3),
-    title=None
-):
+    title: Optional[str] = None
+) -> None:
+    """
+    Plot the kernel density estimation (KDE) distribution of multiple variables
+    by target class for a data block.
+
+    This function generates multiple KDE plots, each showing the distribution
+    of a variable by target class. It is especially useful for exploring the
+    relationship between multiple features and the target variable in a
+    structured dataset.
+
+    Parameters
+    ----------
+    targeted_data_block : pd.DataFrame
+        The dataset block containing the variables to plot and the target variable.
+    var_renames : dict, optional
+        A dictionary mapping variable names to custom labels for the plots.
+        Default is None, which uses the variable names as labels.
+    transf_var : callable, optional
+        A function to apply to each variable before plotting.
+        Default is None.
+    single_figsize : Tuple[int, int], optional
+        The size of each individual subplot figure.
+        Default is (8, 3).
+    title : str, optional
+        The title for the overall figure.
+        Default is None.
+
+    Example
+    -------
+    >>> datablock_by_target_class_kdeplot(
+    >>>     data_block, var_renames={"DAYS_BIRTH": "Age"},
+    >>>     transf_var=lambda s: -s / 365.25,
+    >>>     single_figsize=(8, 3),
+    >>>     title="KDE distribution of variables by target"
+    >>> )
+    """
     var_names = list(targeted_data_block.columns)
     var_names.remove("TARGET")
     if var_renames is None:
@@ -92,7 +142,7 @@ def datablock_by_target_class_kdeplot(
     ncols = 1
     nrows = len(var_names)
     w, h = single_figsize
-    fig, axes = plt.subplots(
+    _, axes = plt.subplots(
         nrows=nrows, ncols=ncols,
         figsize=(w * ncols, h * nrows)
     )

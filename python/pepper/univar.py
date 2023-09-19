@@ -1,7 +1,55 @@
-## Analyse générique (données quali et quanti)
-#  `series_infos` analyse une Series et `dataframe_infos` toutes les Series d'un DataFrame.
+"""Module: pepper/monovar.py
 
-from typing import Union, Callable, Tuple
+This module provides a collection of functions for analyzing and reporting
+data, including functions to compute statistics, visualize data, and export
+reports to Google Sheets. It also includes functions for calculating
+correlation metrics and working with class weights for machine learning tasks.
+
+Functions:
+- `series_infos(s: pd.Series, idx: int) -> Dict[str, Union[str, int, float, bool, List[float], List[str]]]`:
+    Analyze a Pandas Series and return information about it.
+
+- `dataframe_infos(df: pd.DataFrame) -> pd.DataFrame`:
+    Analyze a Pandas DataFrame and return information about all its Series.
+
+- `data_report(data: Union[pd.DataFrame, pd.Series], max_mods: int = 30) -> pd.DataFrame`:
+    Generate a data report, perform data reduction, and return it as a DataFrame.
+
+- `data_report_to_csv_file(report: pd.DataFrame, csv_filename: str) -> None`:
+    Export a data report to a CSV file.
+
+- `data_report_to_gsheet(report: pd.DataFrame, spread, sheet_name: str) -> None`:
+    Export a data report to a Google Sheets spreadsheet.
+
+- `agg_value_counts(s: pd.Series, agg: Union[None, bool, float, int] = .01, dropna: bool = True) -> pd.DataFrame`:
+    Compute value counts and relative frequencies of a Pandas Series.
+
+- `target_weights(target: np.ndarray) -> Tuple[float, float]`:
+    Calculate the weights for each class in a binary target array.
+
+- `get_sample_weights(target: np.ndarray) -> np.ndarray`:
+    Compute sample weights for each element in a binary target array.
+
+- `wmcc(target: np.ndarray, var: np.ndarray) -> float`:
+    Compute the weighted Matthews correlation coefficient between two arrays.
+
+- `weighted_kendall_tau(target: np.ndarray, var: np.ndarray) -> float`:
+    Calculate the weighted Kendall's Tau rank correlation between two arrays.
+
+- `show_correlations(data: pd.DataFrame, title: str, method: str = "pearson", ratio: float = 1) -> pd.DataFrame`:
+    Compute pairwise correlations between columns in a Pandas DataFrame and
+    display the correlation matrix as a heatmap.
+
+- `test_wmcc(target) -> None`:
+    Test the `wmcc` function using various scenarios.
+
+This module is a comprehensive toolkit for data analysis, reporting, and
+machine learning preparation, ensuring that project data is effectively
+processed and analyzed.
+"""
+
+from typing import Union, Tuple, List, Dict
+
 import os
 import pandas as pd
 import numpy as np
@@ -13,131 +61,440 @@ from sklearn.metrics import matthews_corrcoef
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-#from pepper.data_dict import group, subgroup, domain
 from pepper.env import get_tmp_dir
-# from pepper_commons import *
 from pepper.utils import set_plot_title, save_and_show
-from IPython.display import display
+from pepper.gsheet_io import df_to_gsheet
 
-def series_infos(s, idx):
-    precision = 3
-    is_numeric = pd.api.types.is_numeric_dtype(s.dtype)
-    is_bool = pd.api.types.is_bool_dtype(s.dtype)
-    # is_id : se détecte avec un n_u / n proche de 1, même si numérique
+from IPython.display import display
+from gspread_pandas import Spread
+
+import pandas as pd
+import numpy as np
+from typing import Union, List, Dict
+from scipy import stats as sps
+
+
+def _is_numeric(s: pd.Series) -> bool:
+    """
+    Check if a Series is numeric.
+
+    Parameters
+    ----------
+    s : pd.Series
+        The input Series.
+
+    Returns
+    -------
+    bool
+        True if the Series is numeric, False otherwise.
+    """
+    return pd.api.types.is_numeric_dtype(s.dtype)
+
+
+def _get_counts_and_freqs(s: pd.Series) -> (pd.Series, pd.Series):
+    """
+    Calculate value counts and frequencies for a Series.
+
+    Parameters
+    ----------
+    s : pd.Series
+        The input Series.
+
+    Returns
+    -------
+    (pd.Series, pd.Series)
+        A tuple containing two Series:
+        the value counts and the normalized frequencies.
+    """
     counts = s.value_counts()
     freqs = s.value_counts(normalize=True)
-    n = s.size
+    return counts, freqs
+
+
+def _get_n_na_and_n_notna(s: pd.Series) -> (int, int):
+    """
+    Calculate the number of missing and non-missing values in a Series.
+
+    Parameters
+    ----------
+    s : pd.Series
+        The input Series.
+
+    Returns
+    -------
+    (int, int)
+        A tuple containing two integers:
+        the number of missing values and the number of non-missing values.
+    """
     n_na = s.isna().sum()
     n_notna = s.notna().sum()
-    n_unique = s.nunique()
+    return n_na, n_notna
+
+
+def _get_type_info(s: pd.Series) -> Dict:
+    """
+    Get type-related information for a Series.
+
+    Parameters
+    ----------
+    s : pd.Series
+        The input Series.
+
+    Returns
+    -------
+    Dict
+        A dictionary containing information about the Series' data type
+        and related properties.
+    """
+    is_numeric = _is_numeric(s)
     return {
-        # Identification, groupe et type
-        'idx': idx,
-        'group': '<NYI>',  # group(idx),
-        'subgroup': '<NYI>',  # subgroup(idx),
+        # Identification, group, and type
+        'group': '<NYI>',  # TODO: Implement group(idx)
+        'subgroup': '<NYI>',  # TODO: Implement subgroup(idx)
         'name': s.name,
-        'domain': '<NYI>',  # domain(idx),
+        'domain': '<NYI>',  # TODO: Implement domain(idx)
         'format': '<NYI>',
         'dtype': s.dtype,
         'astype': '<NYI>',
         'unity': '<NYI>',
-        'is_numeric': is_numeric,
-        
-        # Nombre de valeurs absentes, de valeurs uniques, taux de remplissage
-        'n_elts': n,
+        'is_numeric': is_numeric
+    }
+
+
+def _get_counts_info(s: pd.Series):
+    """
+    Calculate counts and statistics for a Series.
+
+    Parameters
+    ----------
+    s : pd.Series
+        The input Series.
+
+    Returns
+    -------
+    Dict
+        A dictionary containing various statistics about the Series,
+        including the number of missing values, the number of unique values,
+        the filling rate, and uniqueness (if applicable).
+    """
+    # Number of missing values, unique values, and filling rate
+    precision = 3
+    n = s.size
+    n_na, n_notna = _get_n_na_and_n_notna(s)
+    n_unique = s.nunique()
+    return {
+        'n': n,
         'hasnans': s.hasnans,
         'n_unique': n_unique,
         'n_notna': n_notna,
         'n_na': n_na,
         'filling_rate': round(n_notna / n, precision),
-        'uniqueness': round(n_unique / n_notna, precision) if n_notna else pd.NA,
-        
-        # Tendance centrale de la variable numérique
-        'val_min': s.min() if is_numeric else None,
-        'val_max': s.max() if is_numeric else None,
-        'val_mode': str([round(m, 2) for m in s.mode().tolist()[:10]]) if is_numeric else None,
-        'val_mean': round(s.mean(), precision) if is_numeric else None,
-        'val_trim_mean_10pc': sps.trim_mean(s.dropna().values, 0.1) if is_numeric else None, # TODO test : pas certain que ce ne soit pas s.values
-        'val_med': s.median() if is_numeric else None,
-        
-        # Distribution de la variable numérique
-        'val_std': round(s.std(), precision) if is_numeric else None,
-        'val_interq_range': (s.quantile(0.75) - s.quantile(0.25)) if is_numeric and not is_bool else None,
-        'val_med_abs_dev': robust.scale.mad(s.dropna()) if is_numeric else None,
-        'val_skew': round(s.skew(), precision) if is_numeric else None,
-        'val_kurt': round(s.kurtosis(), precision) if is_numeric else None,
-        'interval': [s.min(), s.max()] if is_numeric else None,
-        
-        # Distribution de la variable catégorielle
-        'modalities': list(counts.index) if not is_numeric else None,
-        'mod_counts': list(counts) if not is_numeric else None,
-        'mod_freqs': list(freqs) if not is_numeric else None,
-        
-        # Dimensions, empreinte mémoire, méta-données de l'implémentation
+        'uniqueness': round(n_unique / n_notna, precision) if n_notna else pd.NA
+    }
+
+
+def _get_numvar_info(s: pd.Series) -> Dict:
+    """
+    Calculate statistics for a numeric Series.
+
+    Parameters
+    ----------
+    s : pd.Series
+        The input Series.
+
+    Returns
+    -------
+    Dict
+        A dictionary containing various statistics for the numeric Series,
+        including minimum and maximum values, mode (up to 10 most common values),
+        mean, trimmed mean, median, standard deviation, interquartile range,
+        median absolute deviation, skewness, kurtosis, and value interval.
+    """
+    # Distribution for numeric variable
+    if not _is_numeric(s):
+        return {
+            'val_min': None, 'val_max': None, 'val_mode': None, 'val_mean': None,
+            'val_trim_mean_10pc': None, 'val_med': None, 'val_std': None,
+            'val_interq_range': None, 'val_med_abs_dev': None,
+            'val_skew': None, 'val_kurt': None, 'interval': None
+        }
+    s = s.astype(float)
+    return {
+        # Central tendency
+        'val_min': s.min(),
+        'val_max': s.max(),
+        'val_mode': str([round(m, 2) for m in s.mode().tolist()[:10]]),
+        'val_mean': round(s.mean(), 3),
+        'val_trim_mean_10pc': round(sps.trim_mean(s.dropna().values, 0.1), 3),
+        'val_med': s.median(),
+        # Dispersion
+        'val_std': round(s.std(), 3),
+        'val_interq_range': s.quantile(0.75) - s.quantile(0.25),
+        'val_med_abs_dev': robust.mad(s.dropna()),
+        'val_skew': round(s.skew(), 3),
+        'val_kurt': round(s.kurtosis(), 3),
+        'interval': [s.min(), s.max()]
+    }
+
+
+def _get_catvar_info(s: pd.Series) -> Dict:
+    """
+    Calculate statistics for a categorical Series.
+
+    Parameters
+    ----------
+    s : pd.Series
+        The input Series.
+
+    Returns
+    -------
+    Dict
+        A dictionary containing statistics for the categorical Series,
+        including modalities (unique values), mod_counts (counts for each modality),
+        and mod_freqs (frequencies for each modality).
+    """
+    # Distribution for categorical variable
+    if _is_numeric(s):
+        return {'modalities': None, 'mod_counts': None, 'mod_freqs': None}
+    counts, freqs = _get_counts_and_freqs(s)
+    return {
+        'modalities': list(counts.index),
+        'mod_counts': list(counts),
+        'mod_freqs': list(freqs),
+    }
+
+
+def _get_technical_info(s: pd.Series) -> Dict:
+    """
+    Calculate statistics for a categorical Series.
+
+    Parameters
+    ----------
+    s : pd.Series
+        The input Series.
+
+    Returns
+    -------
+    Dict
+        A dictionary containing technical information about the Series,
+        including its shape, dimensionality, emptiness, size, number of bytes
+        consumed by the Series, memory usage, flags, array container type,
+        and values container type.
+    """
+    # Dimensions, memory footprint, implementation metadata
+    return {
         'shape': s.shape,
         'ndim': s.ndim,
         'empty': s.empty,
         'size': s.size,
         'nbytes': s.nbytes,
-        'memory_usage': s.memory_usage,     # non reporté dans le dictionnaire de données
+        'memory_usage': s.memory_usage,     # not reported in the data dict
         'flags': s.flags,
         'array container type': type(s.array),
         'values container type': type(s.values)
     }
 
 
-def dataframe_infos(df):
-    infos = [pd.Series(series_infos(df[c], df.columns.get_loc(c))) for c in df.columns]
+def series_infos(
+    s: Union[pd.Series, np.ndarray, List],
+    idx: int = 0
+) -> Dict[str, Union[str, int, float, bool, List[float], List[str]]]:
+    """
+    Analyze a Series and return information about it.
+
+    Parameters
+    ----------
+    s : Union[pd.Series, np.ndarray, List]
+        The Series or array to analyze.
+    idx : int
+        Index of the Series. Defaults to 0.
+
+    Returns
+    -------
+    Dict[str, Union[str, int, float, bool, List[float], List[str]]]
+        Information about the Series.
+
+    Notes
+    -----
+    - 'group', 'subgroup', 'domain', 'format', 'astype', 'unity' fields are not yet implemented.
+    - 'val_mode' field contains a list of up to 10 most common values, rounded to 2 decimal places.
+    - 'val_trim_mean_10pc' field calculates the trimmed mean with 10% of values removed.
+    - 'interval' field contains the minimum and maximum values of the numeric Series.
+    - 'modalities', 'mod_counts', 'mod_freqs' fields are provided for non-numeric Series.
+    - 'memory_usage', 'flags', 'array container type', and 'values container type' fields are metadata about the Series implementation.
+    """
+    if isinstance(s, (np.ndarray, list)):
+        s = pd.Series(s)
+
+    info = {'idx': idx}
+    info |= _get_type_info(s)
+    info |= _get_counts_info(s)
+    info |= _get_numvar_info(s)
+    info |= _get_catvar_info(s)
+    info |= _get_technical_info(s)
+
+    return info
+
+
+def dataframe_infos(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Analyze a DataFrame and return information about all its Series.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame to analyze.
+
+    Returns
+    -------
+    pd.DataFrame
+        Information about all the Series in the DataFrame.
+    """
+    infos = [
+        pd.Series(series_infos(df[c], df.columns.get_loc(c)))
+        for c in df.columns
+    ]
     return pd.DataFrame(infos)
 
 
-# Applicable = Callable[..., Union[str, None]]
+def data_report(
+    data: Union[pd.DataFrame, pd.Series],
+    max_mods: int = 30
+) -> pd.DataFrame:
+    """
+    Generate a data report.
 
-def data_report(data, csv_filename):
+    Parameters
+    ----------
+    data : Union[pd.DataFrame, pd.Series]
+        The data to analyze. Can be either a DataFrame or a Series.
+    max_mods : int, optional
+        The maximum number of modalities to report. Defaults to 30.
+
+    Returns
+    -------
+    pd.DataFrame
+        Information about the data.
+
+    Notes
+    -----
+    This function generates a report on the provided data, including various statistics and information.
+    """
+    def cut_cat_list(x):
+        if x is None:
+            return None
+        if len(x) > max_mods:
+            return x[:max_mods] + ["..."]
+
+    def cut_num_list(x):
+        if x is None:
+            return None
+        if len(x) > max_mods:
+            return x[:max_mods] + [sum(x[30:])]
+    
     # build the dataframe version
-    data_on_data = dataframe_infos(data)
+    report = dataframe_infos(data)
+    
+    if max_mods is not None:
+        # some reductions before export
+        report.modalities = report.modalities.apply(cut_cat_list)
+        report.mod_counts = report.mod_counts.apply(cut_num_list)
+        report.mod_freqs = report.mod_freqs.apply(cut_num_list)
 
-    # some reductions before export
+    report.drop(columns=["memory_usage"], inplace=True)
 
-    # TODO : résoudre le pb Pylance avec le bon cut...: Applicable = lambda ...
-    cut_cat_list = lambda x: None if x is None else x[:30] + ['...']
-    cut_num_list = lambda x: None if x is None else x[:30] + [sum(x[30:])]
+    return report
 
-    data_on_data['modalities'] = data_on_data.modalities.apply(cut_cat_list)
-    data_on_data['mod_counts'] = data_on_data.mod_counts.apply(cut_num_list)
-    data_on_data['mod_freqs'] = data_on_data.mod_freqs.apply(cut_num_list)
-    data_on_data.drop(columns=['memory_usage'], inplace=True)
 
+def data_report_to_csv_file(
+    report: pd.DataFrame,
+    csv_filename: str
+) -> None:
+    """
+    Export a data report to a CSV file.
+
+    Parameters
+    ----------
+    report : pd.DataFrame
+        The data report.
+    csv_filename : str
+        The filename for the CSV report.
+
+    Returns
+    -------
+    None
+    """
     # save in CSV
     tmp_dir = get_tmp_dir()
     vars_analysis_path = os.path.join(tmp_dir, csv_filename)
-    data_on_data.to_csv(vars_analysis_path, sep=',', encoding='utf-8', index=False)
-
-    return data_on_data
+    report.to_csv(vars_analysis_path, sep=",", encoding="utf-8", index=False)
 
 
-def data_report_to_gsheet(data_on_data, spread, sheet_name):
-    def null_convert(s):  # représentation du vide.. par du vide
-        return s.apply(lambda x: '' if x is None or str(x) in ['nan', '[]', '[nan, nan]'] else x)
-    def fr_convert(s):    # gestion de la locale dans un monde numérique encore dominé par les anglo-saxons
-        return s.apply(lambda x: str(x).replace(',', ';').replace('.', ','))
-    exported = data_on_data.copy()
-    exported = exported.apply(null_convert)
-    exported['shape'] = exported['shape'].apply(lambda x: '\'' + str(x))  # seuls les initiés savent pourquoi
-    exported.loc[:, 'filling_rate':'mod_freqs'] = exported.loc[:, 'filling_rate':'mod_freqs'].apply(fr_convert)
-    spread.df_to_sheet(exported, sheet=sheet_name, index=False, headers=False, start='A7')
-    # display(exported.loc[:, 'filling_rate':'mod_freqs'])  # un dernier contrôle visuel
+def data_report_to_gsheet(
+    report: pd.DataFrame,
+    spread: Spread,
+    sheet_name: str
+) -> None:
+    """
+    Export data report to a Google Sheets spreadsheet.
+
+    Parameters
+    ----------
+    report : pd.DataFrame
+        The data report as a DataFrame.
+    spread : gspread_pandas.Spread
+        The Google Sheets spreadsheet.
+    sheet_name : str
+        The name of the sheet in the Google Sheets spreadsheet.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    This function exports the data report to a Google Sheets spreadsheet.
+    It performs data conversion and formatting suitable for Google Sheets.
+    
+    Example
+    -------
+    from pepper.univar import data_report, data_report_to_gsheet
+    from gspread_pandas import Spread
+    # target GSheet
+    spread = Spread("<Your Google Doc ID>")
+    # build the report dataframe
+    report = data_report(data)
+    # export to the 'data_dict' sheet
+    data_report_to_gsheet(report, spread, 'data_dict')
+    """
+    numeric_slice = slice("filling_rate", "mod_freqs")
+    numeric_cols = list(report.loc[:, numeric_slice].columns)
+    df_to_gsheet(
+        data=report,
+        spread=spread,
+        sheet_name=sheet_name,
+        as_code=["shape"],
+        as_fr_FR=numeric_cols,
+        start="A7"
+    )
 
 
 """ Cats analysis
 """
+
+
+def print_value_counts_dict(data: pd.DataFrame, col: str):
+    vc_dict = data[col].value_counts(dropna=False).to_dict()
+    print(f"{col} ({len(vc_dict)}): {vc_dict}")
+
 
 def agg_value_counts(
     s: pd.Series,
     agg: Union[None, bool, float, int] = .01,
     dropna: bool = True
 ) -> pd.DataFrame:
-    """Computes the value counts and relative frequencies of a pandas Series.
+    """
+    Compute the value counts and relative frequencies of a pandas Series.
     
     Parameters
     ----------
@@ -168,6 +525,8 @@ def agg_value_counts(
     >>> display(agg_value_counts(s))
     >>> display(agg_value_counts(s, agg=True))
     >>> display(agg_value_counts(s, agg=.15))
+    
+    TODO Refactor
     """
     # Compute the absolute and relative value counts of the series
     abs_vc = s.value_counts(dropna=dropna)
@@ -214,7 +573,8 @@ def agg_value_counts(
         eps_vc = vc[is_epsilon].copy()
         eps_vc.sort_index(inplace=True)
         eps_idx = f"{eps_vc.index[0]}:{eps_vc.index[-1]}"
-        # don't do this (undesired float cast that must then be fixed by another cast) :
+        
+        # Don't do this (undesired float cast that must then be fixed by another cast) :
         # agg_vc.loc[eps_idx] = eps_vc.sum()
         # agg_vc.astype({"count": int}, copy=False)
         # the right solution is :
@@ -237,41 +597,74 @@ def cats_freqs(data, label):
 """
 
 # P4 à refaire en mieux
-def cats_weighted_freqs(data, label, wlabels, short_wlabels):
+def cats_weighted_freqs(
+    data: pd.DataFrame,
+    label: str,
+    wlabels: list,
+    short_wlabels: list
+) -> pd.DataFrame:
+    """
+    Compute weighted frequencies of categorical values in a DataFrame column.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The DataFrame containing the data.
+    label : str
+        The name of the column for which to calculate frequencies.
+    wlabels : list
+        A list of column names containing weights.
+    short_wlabels : list
+        A list of short names for weight columns for plotting.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with weighted frequencies of categorical values.
+
+    Examples
+    --------
+    >>> fw = cats_weighted_freqs(
+            data, 'label_column',
+            ['weight_column1', 'weight_column2'],
+            ['W1', 'W2']
+        )
+    >>> display(fw)
+    """
     cw = data[[label] + wlabels]
-    aggs = {label: 'count'}
+    aggs = {label: "count"}
     for wlabel in wlabels:
-        aggs[wlabel] = 'sum'
+        aggs[wlabel] = "sum"
     fw = cw.groupby(by=label).agg(aggs)
-    fw.columns = ['count'] + short_wlabels
+    fw.columns = ["count"] + short_wlabels
     fw = fw.sort_values(by=fw.columns[1], ascending=False)
     total = fw.sum()
     fw /= total
-    fw.plot.bar(figsize=(.5 * fw.shape[0], 5))   # TODO : faire plus sympa à l'aide de SNS
+    # TODO : faire plus sympa à l'aide de SNS
+    fw.plot.bar(figsize=(.5 * fw.shape[0], 5))
     plt.show()
     return fw
-
 
 
 """ Correlation
 """
 
-
 def target_weights(target: np.ndarray) -> Tuple[float, float]:
-    """Calculates the weights of each class in the target array.
+    """
+    Calculate the weights of each class in the target array.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     target : np.ndarray
         The target variable as a binary array (0s and 1s).
         
-    Returns:
-    --------
+    Returns
+    -------
     Tuple[float, float]
         A tuple containing the weights for class 0 and class 1, respectively.
         
-    Example:
-    --------
+    Example
+    -------
     >>> target = np.array([0, 1, 1, 0, 1])
     >>> target_weights(target)
     (1.25, 5.0)
@@ -285,20 +678,21 @@ def target_weights(target: np.ndarray) -> Tuple[float, float]:
 
 
 def get_sample_weights(target: np.ndarray) -> np.ndarray:
-    """Computes the sample weights for each element in the target array.
+    """
+    Compute the sample weights for each element in the target array.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     target : np.ndarray
         The target variable as a binary array (0s and 1s).
         
-    Returns:
-    --------
+    Returns
+    -------
     np.ndarray
         An array with the sample weights for each element in the target array.
         
-    Example:
-    --------
+    Example
+    -------
     >>> target = np.array([0, 1, 1, 0, 1])
     get_sample_weights(target)
     array([1.25, 5.  , 5.  , 1.25, 5.  ])
@@ -309,11 +703,11 @@ def get_sample_weights(target: np.ndarray) -> np.ndarray:
 
 
 def wmcc(target: np.ndarray, var: np.ndarray) -> float:
-    """Computes the weighted Matthews correlation coefficient between two
-    arrays.
+    """
+    Compute the weighted Matthews correlation coefficient between two arrays.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     target : np.ndarray
         The target variable as a binary array (0s and 1s).
     var : np.ndarray
@@ -343,35 +737,43 @@ def weighted_kendall_tau(target: np.ndarray, var: np.ndarray) -> float:
     """
     Calculate the weighted Kendall's Tau rank correlation between two arrays.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     target : np.ndarray
         The target variable as a binary array (0s and 1s).
     var : np.ndarray
         The variable to compare to the target variable, as an array of any type
         with an order relation.
         
-    Returns:
-    --------
+    Returns
+    -------
     float
         The weighted Kendall's Tau rank correlation between the two arrays.
         
-    Example:
-    --------
+    Example
+    -------
     # generate sample data
     >>> target = np.array([0, 0, 1, 1, 0, 1, 0, 1, 1, 1])
     >>> var = np.array([1.2, 2.5, 0.8, 1.5, 1.7, 0.9, 2.1, 1.1, 1.8, 0.7])
     # calculate weighted Kendall's Tau rank correlation
     >>> weighted_kendall_tau(target, var) 
     0.13636363636363635
+    
+    
+    Description
+    -----------
+    Kendall's Tau rank correlation measures the association between two arrays by comparing the
+    number of concordant and discordant pairs of values. The weighted version of Kendall's Tau
+    assigns different weights to different pairs, making it suitable for data with varying degrees
+    of importance.
     """
     w_0, w_1 = target_weights(target)
     corr, p_value = stats.weightedtau(
         target, var,
         weigher=lambda x: w_1 if x else w_0
     )
-    print("Weighted Kendall's Tau Rank Correlation : ", corr)
-    print("P-value : ", p_value)
+    # print("Weighted Kendall's Tau Rank Correlation : ", corr)
+    # print("P-value : ", p_value)
     return corr  
 
 
@@ -381,7 +783,8 @@ def show_correlations(
     method: str = "pearson",
     ratio: float = 1
 ) -> pd.DataFrame:
-    """Computes pairwise correlation of columns in the input dataframe using
+    """
+    Compute pairwise correlation of columns in the input dataframe using
     the specified correlation method and plot the correlation matrix as a
     heatmap.
 
@@ -437,7 +840,35 @@ def show_correlations(
     return data_corr
 
 
-def test_wmcc(target):
+def test_wmcc(target: np.ndarray) -> None:
+    """
+    Test the weighted Matthews correlation coefficient (WMCC) function with various inputs.
+
+    Parameters
+    ----------
+    target : np.ndarray
+        The target variable as a binary array (0s and 1s).
+
+    Returns
+    -------
+    None
+
+    Example
+    -------
+    >>> target = np.array([0, 0, 1, 1, 1])
+    >>> test_wmcc(target)
+    
+    Description
+    -----------
+    This function tests the `wmcc` function, which calculates the
+    weighted Matthews correlation coefficient (WMCC) between two arrays.
+    It checks the WMCC with various inputs, including:
+    - The WMCC of the target array with itself.
+    - The WMCC of the target array with its complement (1s flipped to 0s and vice versa).
+    - Checking if shuffling the target array affects the WMCC.
+    
+    The function displays the results of these tests for verification.
+    """
     display(wmcc(target, target))
     display(wmcc(target, 1 - target))
     m = len(target) // 3

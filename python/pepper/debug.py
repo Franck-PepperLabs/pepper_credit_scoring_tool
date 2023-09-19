@@ -13,7 +13,8 @@ from pepper.utils import (
 # blob/main/notebooks/tx_pipeline.py
 
 def tx(verbosity: int, text: str) -> None:
-    """Prints a text if the verbosity level is greater than 1.
+    """
+    Print a text if the verbosity level is greater than 1.
 
     Parameters
     ----------
@@ -29,7 +30,8 @@ def tx(verbosity: int, text: str) -> None:
 
 
 def kv(verbosity: int, key: str, val: str) -> None:
-    """Prints a text if the verbosity level is greater than 1.
+    """
+    Print a text if the verbosity level is greater than 1.
 
     Parameters
     ----------
@@ -45,7 +47,8 @@ def kv(verbosity: int, key: str, val: str) -> None:
 
 
 def tl(verbosity: int, title: str) -> None:
-    """Prints the title if the verbosity level is greater than 0.
+    """
+    Print the title if the verbosity level is greater than 0.
     If the verbosity level is 1 simple print, else pretty print
 
     Parameters
@@ -68,7 +71,8 @@ def tl(verbosity: int, title: str) -> None:
 
 
 def stl(verbosity: int, subtitle: str) -> None:
-    """Prints the subtitle if the verbosity level is greater than 1.
+    """
+    Print the subtitle if the verbosity level is greater than 1.
 
     Parameters
     ----------
@@ -88,7 +92,8 @@ def stl(verbosity: int, subtitle: str) -> None:
 
 
 def sstl(verbosity: int, subsubtitle: str) -> None:
-    """Prints the sub-subtitle if the verbosity level is greater than 2.
+    """
+    Print the sub-subtitle if the verbosity level is greater than 2.
 
     Parameters
     ----------
@@ -105,10 +110,9 @@ def sstl(verbosity: int, subsubtitle: str) -> None:
         print_subsubtitle(subsubtitle)
 
 
-
 def this_f_name() -> str:
     """
-    Returns the name of the calling function.
+    Return the name of the calling function.
 
     Returns:
     str: The name of the calling function as a string.
