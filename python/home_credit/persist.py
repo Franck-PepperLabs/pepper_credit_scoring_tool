@@ -362,7 +362,7 @@ def controlled_load(
     kwargs: Dict,
     builder: Callable,
     in_cache_name: Optional[str] = None,
-    debug: Optional[bool] = True
+    debug: Optional[bool] = False
 ) -> pd.DataFrame:
     """
     Control the loading of data based on cache and file operations.
@@ -397,6 +397,7 @@ def controlled_load(
     no_cache = kwargs.pop("no_cache", None)
     from_file = kwargs.pop("from_file", None)
     update_file = kwargs.pop("update_file", None)
+    from_file = from_file and not update_file
 
     # Get the parameters for persistence and debugging information
     params = get_persist_params(kwargs, method, debug)

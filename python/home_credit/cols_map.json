@@ -338,6 +338,9 @@
             "financial_statement": [
                 "AMT_CREDIT_SUM", "AMT_CREDIT_SUM_DEBT", "AMT_CREDIT_SUM_LIMIT",
                 "AMT_CREDIT_SUM_OVERDUE", "AMT_ANNUITY"
+            ],
+            "all_cats": [
+                "CREDIT_ACTIVE", "CREDIT_CURRENCY", "CREDIT_TYPE"
             ]
         },
         "previous_application": {
@@ -444,6 +447,11 @@
                 "AMT_REQ_CREDIT_BUREAU_HOUR", "AMT_REQ_CREDIT_BUREAU_DAY",
                 "AMT_REQ_CREDIT_BUREAU_WEEK", "AMT_REQ_CREDIT_BUREAU_MON",
                 "AMT_REQ_CREDIT_BUREAU_QRT", "AMT_REQ_CREDIT_BUREAU_YEAR"
+            ],
+            "all_cats": [
+                "CODE_GENDER", "NAME_CONTRACT_TYPE", "NAME_INCOME_TYPE",
+                "NAME_EDUCATION_TYPE", "OCCUPATION_TYPE", "ORGANIZATION_TYPE",
+                "NAME_HOUSING_TYPE", "NAME_TYPE_SUITE", "NAME_FAMILY_STATUS"
             ]
         }
     }

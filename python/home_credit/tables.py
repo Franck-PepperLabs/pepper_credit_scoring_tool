@@ -8,7 +8,26 @@ from home_credit.persist import this_f_name, controlled_load
 from home_credit.cols_map import get_cols_map
 
 from home_credit.impute import impute_credit_card_balance_drawings
-
+from home_credit.groupby import (
+    get_bureau_loan_status_by_month,
+    get_bureau_loan_status_by_client_and_month,
+    get_bureau_loan_status,
+    get_bureau_loan_status_by_client,
+    get_bureau_loan_activity_by_month,
+    get_bureau_loan_activity_by_client_and_month,
+    get_bureau_mean_loan_activity,
+    get_bureau_mean_loan_activity_by_client,
+    get_rle_bureau_loan_tracking_period,
+    get_rle_bureau_loan_tracking_period_by_client,
+    get_rle_bureau_loan_feature_variation,
+    get_rle_bureau_loan_feature_by_client_variation,
+    
+    get_rle_pos_cash_loan_tracking_period,
+    get_rle_credit_card_loan_tracking_period,
+    
+    get_clean_installments_payments_base,
+    get_installments_payments_by_installment
+)
 # from home_credit.clean_up import *
 
 import pandas as pd
@@ -161,10 +180,12 @@ class HomeCreditTable:
 
     @classmethod
     def _reset_index(cls, data: pd.DataFrame) -> None:
+        # sourcery skip: pandas-avoid-inplace
+        # -> in context, it's a very bad advice
         """Sort and reset the index and rename columns index"""
         keys = cls.cols_group("keys")
-        data = data.sort_values(by=keys)
-        data = data.set_index(keys)
+        data.sort_values(by=keys, inplace=True)
+        data.set_index(keys, inplace=True)
         data.columns.name = f"CLEAN_{cls.name.upper()}"
 
     @classmethod
@@ -189,9 +210,10 @@ class HomeCreditTable:
     ) -> pd.DataFrame:
         return controlled_load(
             this_f_name(), locals().copy(),
-            cls._get_clean_table, f"clean_{cls.name}",
-            True
+            cls._get_clean_table, f"clean_{cls.name}"
         )
+
+
 
 
 class BureauBalance(HomeCreditTable):
@@ -206,9 +228,11 @@ class BureauBalance(HomeCreditTable):
 
     @classmethod
     def _encode(cls, data: pd.DataFrame) -> None:
+        # sourcery skip: pandas-avoid-inplace
+        # -> in context, it's a very bad advice
         # TODO : abstraction : config dans un fichier
         data.MONTHS_BALANCE = -data.MONTHS_BALANCE
-        data = data.sort_values(by=["SK_ID_BUREAU", "MONTHS_BALANCE"])
+        data.sort_values(by=["SK_ID_BUREAU", "MONTHS_BALANCE"], inplace=True)
         data.STATUS = data.STATUS.replace("X", np.nan)
         data.STATUS = data.STATUS.fillna(method="ffill")
         # data.STATUS = data.STATUS.replace("C", 0)
@@ -216,22 +240,230 @@ class BureauBalance(HomeCreditTable):
     @classmethod
     def _downcast(cls, data: pd.DataFrame) -> None:
         # TODO : abstraction : config dans un fichier
-
         # Apply downcasting for various column groups
         cast_columns(data, ["SK_ID_BUREAU", "SK_ID_CURR"], np.uint32)
-        cast_columns(data, ["TARGET", "MONTHS_BALANCE"], np.uint8)
+        cast_columns(data, "MONTHS_BALANCE", np.uint8)
         # cast_columns(data, "STATUS", np.uint8)
 
+    @classmethod
+    def loan_status_by_month(cls,
+        decimals: Optional[int] = 2,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.Series:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_bureau_loan_status_by_month(
+                BureauBalance.clean(), decimals
+            ),
+            "bureau_loan_status_by_month"
+        )
+
+    @classmethod
+    def loan_status_by_client_and_month(cls,
+        decimals: Optional[int] = 2,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.Series:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_bureau_loan_status_by_client_and_month(
+                BureauBalance.clean(),
+                decimals
+            ),
+            "bureau_loan_status_by_client_and_month"
+        )
+
+    @classmethod
+    def loan_status(cls,
+        alpha: Optional[float] = 1,
+        decimals: Optional[int] = 2,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.Series:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_bureau_loan_status(
+                BureauBalance.clean(), alpha, decimals
+            ),
+            "bureau_loan_status"
+        )
+
+    @classmethod
+    def loan_status_by_client(cls,
+        alpha: Optional[float] = 1,
+        decimals: Optional[int] = 2,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.Series:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_bureau_loan_status_by_client(
+                BureauBalance.clean(), alpha, decimals
+            ),
+            "bureau_loan_status_by_client"
+        )
+
+    @classmethod
+    def loan_activity_by_month(cls,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.Series:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_bureau_loan_activity_by_month(BureauBalance.clean()),
+            "bureau_loan_activity_by_month"
+        )
+
+    @classmethod
+    def loan_activity_by_client_and_month(cls,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.Series:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_bureau_loan_activity_by_client_and_month(
+                BureauBalance.clean()
+            ),
+            "bureau_loan_activity_by_client_and_month"
+        )
+
+    @classmethod
+    def mean_loan_activity(cls,
+        alpha: Optional[float] = 1,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.Series:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_bureau_mean_loan_activity(
+                BureauBalance.clean(), alpha
+            ),
+            "bureau_mean_loan_activity"
+        )
+
+    @classmethod
+    def mean_loan_activity_by_client(cls,
+        alpha: Optional[float] = 1,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.Series:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_bureau_mean_loan_activity_by_client(BureauBalance.clean()),
+            "bureau_mean_loan_activity_by_client"
+        )
+
+    @classmethod
+    def rle_loan_tracking_period(cls,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.Series:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_rle_bureau_loan_tracking_period(
+                BureauBalance.clean()
+            ),
+            "rle_bureau_loan_tracking_period"
+        )
+
+    @classmethod
+    def rle_loan_tracking_period_by_client(cls,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.Series:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_rle_bureau_loan_tracking_period_by_client(
+                BureauBalance.clean()
+            ),
+            "rle_bureau_loan_tracking_period_by_client"
+        )
+
+    @classmethod
+    def rle_loan_activity_variation(cls,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.Series:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_rle_bureau_loan_feature_variation(
+                BureauBalance.loan_activity_by_month(), "ACTIVE"
+            ),
+            "rle_bureau_loan_activity_variation"
+        )
+
+    @classmethod
+    def rle_loan_activity_by_client_variation(cls,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False,
+    ) -> pd.Series:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda:
+                get_rle_bureau_loan_feature_by_client_variation(
+                    BureauBalance.loan_activity_by_client_and_month(), "ACTIVE"
+                ),
+            "rle_bureau_loan_activity_by_client_variation"
+        )
+
+    @classmethod
+    def rle_loan_status_variation(cls,
+        decimals: Optional[int] = 2,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.Series:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_rle_bureau_loan_feature_variation(
+                BureauBalance.loan_status_by_month(decimals=decimals), "STATUS"
+            ),
+            "rle_bureau_loan_status_variation"
+        )
+
+    @classmethod
+    def rle_loan_status_by_client_variation(cls,
+        decimals: Optional[int] = 2,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False,
+    ) -> pd.Series:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda:
+                get_rle_bureau_loan_feature_by_client_variation(
+                    BureauBalance.loan_status_by_client_and_month(decimals=decimals), "STATUS"
+                ),
+            "rle_bureau_loan_status_by_client_variation"
+        )
 
 class InstallmentsPayments(HomeCreditTable):
 
     name = "installments_payments"
 
-    """ Options No entry included or not
-    @staticmethod
-    def clean_without_entry() -> pd.DataFrame:
-        return get_clean_installments_payments_without_entry()
-    """
+    @classmethod
+    def _impute(cls, data: pd.DataFrame) -> None:
+        """Impute missing values and correct outliers"""
+        # Insert the aggregation counter
+        # data.insert(0, "n_PREV", 1)
+
+        # Calculate MONTHS_BALANCE based on DAYS_INSTALMENT and insert it
+        gregorian_month = 365.2425 / 12
+        months_balance = -(data.DAYS_INSTALMENT // gregorian_month).astype(int)
+        data.insert(0, "MONTHS_BALANCE", months_balance)
 
     @classmethod
     def _encode(cls, data: pd.DataFrame) -> None:
@@ -240,16 +472,81 @@ class InstallmentsPayments(HomeCreditTable):
         data[ages_cols] = -data[ages_cols]
 
     @classmethod
-    def _downcast(cls, data: pd.DataFrame) -> None:
+    def _downcast(cls, data: pd.DataFrame, no_na_payment=False) -> None:
         # TODO : abstraction : config dans un fichier
-
         # Apply downcasting for various column groups
         cast_columns(data, ["SK_ID_PREV", "SK_ID_CURR"], np.uint32)
-        cast_columns(data, ["TARGET", "NUM_INSTALMENT_VERSION"], np.uint8)
-        cast_columns(data, [
-            "NUM_INSTALMENT_NUMBER", "DAYS_INSTALMENT", "DAYS_ENTRY_PAYMENT"
-        ], np.uint16)
-        cast_columns(data, ["AMT_INSTALMENT", "AMT_PAYMENT"], np.float16)
+        cast_columns(data, "NUM_INSTALMENT_VERSION", np.uint8)
+        cast_columns(data, ["NUM_INSTALMENT_NUMBER", "DAYS_INSTALMENT"], np.uint16)
+        # Issue: float16 forbidden:
+        # Unhandled type for Arrow to Parquet schema conversion: halffloat
+        # cast_columns(data, ["AMT_INSTALMENT", "AMT_PAYMENT"], np.float16)
+        # Precision issues : deactivate this downcast
+        # cast_columns(data, ["AMT_INSTALMENT", "AMT_PAYMENT"], np.float32)
+        if no_na_payment:
+            cast_columns(data, "DAYS_ENTRY_PAYMENT", np.uint16)
+            # cast_columns(data, "AMT_PAYMENT", np.float16)
+            cast_columns(data, "AMT_PAYMENT", np.float32)
+
+    @classmethod
+    def _get_clean_table(cls, no_na_payment=False) -> pd.DataFrame:
+        # Load the raw table
+        data = cls.raw()
+
+        if no_na_payment:
+            # Remove the 2,905 rows for which payment information is missing
+            payment_cols = InstallmentsPayments.cols_group("payment")
+            data.dropna(subset=payment_cols, inplace=True)
+        
+        # Cleaning pipeline
+        targetize_table(data)  # Targetize (and currentize) the table if necessary
+        cls._impute(data)  # Impute missing values and correct outliers
+        cls._encode(data)  # Map categories
+        cls._downcast(data, no_na_payment)  # Downcast data types
+        cls._reset_index(data)  # Sort end reset the index and rename columns index
+
+        return data
+
+    @classmethod
+    def clean(cls,
+        no_na_payment: Optional[bool] = True,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.DataFrame:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: cls._get_clean_table(no_na_payment=no_na_payment),
+            f"clean_{cls.name}{'' if no_na_payment else '_with_na_payment'}"
+        )
+
+    @classmethod
+    def clean_base(cls,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.DataFrame:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_clean_installments_payments_base(
+                InstallmentsPayments.clean()
+            ),
+            "clean_installments_payments_clean_base"
+        )
+
+    @classmethod
+    def by_installment(cls,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.DataFrame:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_installments_payments_by_installment(
+                InstallmentsPayments.clean_base()
+            ),
+            "installments_payments_by_installment"
+        )
 
 
 class POSCashBalance(HomeCreditTable):
@@ -264,8 +561,10 @@ class POSCashBalance(HomeCreditTable):
 
     @classmethod
     def _impute(cls, data: pd.DataFrame) -> None:
+        # sourcery skip: pandas-avoid-inplace
+        # -> in context, it's a very bad advice
         """Impute missing values and correct outliers"""
-        pass
+        data.dropna(inplace=True)
 
     @classmethod
     def _encode(cls, data: pd.DataFrame) -> None:
@@ -281,6 +580,20 @@ class POSCashBalance(HomeCreditTable):
         cast_columns(data, ["MONTHS_BALANCE"], np.uint8)
         cast_columns(data, ["SK_DPD", "SK_DPD_DEF"], np.uint16)
         cast_columns(data, ["CNT_INSTALMENT", "CNT_INSTALMENT_FUTURE"], np.int8)
+
+    @classmethod
+    def rle_loan_tracking_period(cls,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.Series:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_rle_pos_cash_loan_tracking_period(
+                POSCashBalance.clean()
+            ),
+            "rle_pos_cash_loan_tracking_period"
+        )
 
 
 class CreditCardBalance(HomeCreditTable):
@@ -303,7 +616,22 @@ class CreditCardBalance(HomeCreditTable):
 
         # Apply downcasting for various column groups
         cast_columns(data, ["SK_ID_PREV", "SK_ID_CURR"], np.uint32)
-        cast_columns(data, ["TARGET", "MONTHS_BALANCE"], np.uint8)
+        cast_columns(data, "MONTHS_BALANCE", np.uint8)
+
+
+    @classmethod
+    def rle_loan_tracking_period(cls,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.Series:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_rle_credit_card_loan_tracking_period(
+                POSCashBalance.clean()
+            ),
+            "rle_credit_card_loan_tracking_period"
+        )
 
 
 class Bureau(HomeCreditTable):
@@ -325,7 +653,7 @@ class Bureau(HomeCreditTable):
     ) -> pd.Series:
         return controlled_load(
             this_f_name(), locals().copy(),
-            Bureau._to_curr_map, "bureau_to_curr_map", True
+            Bureau._to_curr_map, "bureau_to_curr_map"
         ).SK_ID_CURR
 
     @classmethod
@@ -344,7 +672,6 @@ class Bureau(HomeCreditTable):
         # TODO : abstraction : config dans un fichier
 
         # Apply downcasting for various column groups
-        cast_columns(data, "TARGET", np.uint8)
         cast_columns(data, "SK_ID_BUREAU", np.uint32)
         cast_columns(data, "SK_ID_CURR", np.uint32)
         cast_columns(data, "CNT_CREDIT_PROLONG", np.uint8)
@@ -355,27 +682,6 @@ class Bureau(HomeCreditTable):
         cast_columns(data, "CREDIT_DAY_OVERDUE", np.uint16)
         # Downcast float32 of financial_statement is impossible : all NA (except one)
 
-
-    """ Abstraction -> dans la classe abstraite HomeCreditTable
-    @classmethod
-    def _reset_index(cls, data: pd.DataFrame) -> None:
-        data.set_index(["SK_ID_CURR", "SK_ID_BUREAU"], inplace=True)
-        data.columns.name = "CLEAN_BUREAU"
-    """
-
-    """ Abstraction -> dans la classe abstraite HomeCreditTable
-    @classmethod
-    def clean(cls,
-        no_cache: Optional[bool] = True,
-        from_file: Optional[bool] = True,
-        update_file:  Optional[bool] = False
-    ) -> pd.DataFrame:
-        return controlled_load(
-            this_f_name(), locals().copy(),
-            Bureau._get_clean_table, "clean_bureau",
-            True
-        )
-    """
 
 
 class PreviousApplication(HomeCreditTable):
@@ -403,9 +709,8 @@ class PreviousApplication(HomeCreditTable):
         # TODO : abstraction : config dans un fichier
 
         # Apply downcasting for various column groups
-        Application.cast_cols_group(data, "target", np.uint8)
-        Application.cast_cols_group(data, "keys", np.uint16)
-        Application.cast_cols_group(data, "last_app_flags", np.uint8)
+        PreviousApplication.cast_cols_group(data, "keys", np.uint16)
+        PreviousApplication.cast_cols_group(data, "last_app_flags", np.uint8)
         cast_columns(data, "SELLERPLACE_AREA", np.uint16)
 
 
@@ -445,7 +750,7 @@ class Application(HomeCreditTable):
     ) -> pd.Series:
         return controlled_load(
             this_f_name(), locals().copy(),
-            Application._to_target_map, "application_to_target_map", True
+            Application._to_target_map, "application_to_target_map"
         ).TARGET
 
     @classmethod
@@ -507,7 +812,6 @@ class Application(HomeCreditTable):
         # TODO : abstraction : config dans un fichier
 
         # Apply downcasting for various column groups
-        Application.cast_cols_group(data, "target", np.uint8)
         Application.cast_cols_group(data, "keys", np.uint32)
         Application.cast_cols_group(data, "gender", np.uint8)
         Application.cast_cols_group(data, "financial_statement", np.float32)
@@ -534,6 +838,59 @@ class Application(HomeCreditTable):
         cnt_req_cols.remove("AMT_REQ_CREDIT_BUREAU_QRT")
         cast_columns(data, cnt_req_cols, np.int8)
         cast_columns(data, "AMT_REQ_CREDIT_BUREAU_QRT", np.int16)
+
+
+class Region(HomeCreditTable):
+
+    name = "region"
+
+    @classmethod
+    def _get_clean_table(cls) -> pd.DataFrame:
+        pivot = "REGION_POPULATION_RELATIVE"
+        target = "TARGET"
+        commute_flags_cols = Application.cols_group("commute_flags")
+        region_ratings_cols = Application.cols_group("region_ratings")
+        region_cols = [target, pivot] + region_ratings_cols + commute_flags_cols
+
+        data = Application.clean()
+        region = data[region_cols]
+        
+        def count_if(val):
+            return lambda x: (x == val).sum()
+
+        region = region.groupby(by=pivot)
+
+        region = region.agg({
+            pivot: "count",
+            "REGION_RATING_CLIENT": "first",
+            target: [count_if(0), count_if(1), count_if(-1)],
+            "REGION_RATING_CLIENT_W_CITY": {count_if(3), count_if(2), count_if(1)}
+        } | {flag_col: "sum" for flag_col in commute_flags_cols})
+
+        region = region.sort_values(by=(pivot, "count"), ascending=False)
+
+        region = region.reset_index()
+        region.index.name = "RID"
+
+        region.columns = pd.Index([
+            ("REGION", "POPULATION"),
+            ("REGION", "CLIENTS"),
+            ("REGION", "RATING"),
+            ("TARGET_DIST", "0"),
+            ("TARGET_DIST", "1"),
+            ("TARGET_DIST", "-1"),
+            ("CITY_RATING_DIST", "3"),
+            ("CITY_RATING_DIST", "2"),
+            ("CITY_RATING_DIST", "1"),
+            ("COMMUTE_FLAG_COUNTS", "C1"),
+            ("COMMUTE_FLAG_COUNTS", "C2"),
+            ("COMMUTE_FLAG_COUNTS", "C3"),
+            ("COMMUTE_FLAG_COUNTS", "C4"),
+            ("COMMUTE_FLAG_COUNTS", "C5"),
+            ("COMMUTE_FLAG_COUNTS", "C6"),
+        ])
+        
+        return region
 
 
 """ Merge utils (replace the old home_credit.merge versions)

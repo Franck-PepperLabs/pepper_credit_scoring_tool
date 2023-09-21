@@ -2,7 +2,7 @@ from typing import Callable, Optional, Union, List
 
 from home_credit.load import get_table
 from home_credit.merge import currentize
-from pepper.feat_eng import jumps_rle, series_rle_reduction
+from pepper.rle import jumps_rle, series_rle_reduction
 
 import pandas as pd
 import numpy as np
@@ -442,7 +442,7 @@ def get_bureau_loan_status_by_client(
     )
 
 
-def get_bureau_loan_activity_by_month(data: pd.DataFrame, keep_curr=False):
+def get_bureau_loan_activity_by_month(data: pd.DataFrame, keep_curr=True):
     dropped_cols = ["TARGET"] if keep_curr else ["TARGET", "SK_ID_CURR"]
     activity = data.drop(columns=dropped_cols).copy()
     activity.STATUS = (activity.STATUS != "C").astype(np.uint8)
@@ -452,7 +452,7 @@ def get_bureau_loan_activity_by_month(data: pd.DataFrame, keep_curr=False):
 
 
 def get_bureau_loan_activity_by_client_and_month(data):
-    activity = get_bureau_loan_activity_by_month(data, keep_curr=True)
+    activity = get_bureau_loan_activity_by_month(data)
     activity = activity.reset_index()
     activity = activity.drop(columns="SK_ID_BUREAU")
     activity = activity.groupby(by=["SK_ID_CURR", "MONTHS_BALANCE"])
@@ -492,6 +492,31 @@ def get_bureau_mean_loan_activity_by_client(data, alpha=1):
     activity.ACTIVE = activity.ACTIVE.astype(np.float32)
     activity.columns.name = "BUREAU_MEAN_LOAN_ACTIVITY_BY_CLIENT"
     return activity
+
+
+def get_rle_tracking_period(
+    data: pd.DataFrame,
+    pivot: str,
+    base_name: str
+) -> pd.DataFrame:
+    tracking = data.reset_index()
+    tracking = tracking[[pivot, "MONTHS_BALANCE"]]
+    # tracking.SK_ID_BUREAU = tracking.SK_ID_BUREAU.astype(np.uint32)
+    tracking.MONTHS_BALANCE = tracking.MONTHS_BALANCE.astype(np.uint8)
+    tracking = tracking.groupby(by=pivot)
+    tracking = tracking.agg({"MONTHS_BALANCE": ["min", "max", "count", jumps_rle]})
+    months_agg_cols = tracking.columns[:3]
+    tracking[months_agg_cols] = tracking[months_agg_cols].astype(np.uint8)
+    tracking.columns.name = f"{base_name}_TRACKING_PERIOD"
+    return tracking
+
+
+def get_rle_pos_cash_loan_tracking_period(data: pd.DataFrame) -> pd.DataFrame:
+    return get_rle_tracking_period(data, "SK_ID_PREV", "POS_CASH_LOAN")
+
+
+def get_rle_credit_card_loan_tracking_period(data: pd.DataFrame) -> pd.DataFrame:
+    return get_rle_tracking_period(data, "SK_ID_PREV", "CREDIT_CARD_LOAN")
 
 
 def get_rle_bureau_loan_tracking_period(data: pd.DataFrame) -> pd.DataFrame:
@@ -563,7 +588,7 @@ def get_rle_bureau_loan_tracking_period_by_client(data: pd.DataFrame) -> pd.Data
     return tracking
 
 
-def get_rle_bureau_loan_feature_variations(
+def get_rle_bureau_loan_feature_variation(
     data: pd.DataFrame,
     features: Union[str, List[str]]
 ) -> pd.DataFrame:
@@ -623,7 +648,7 @@ def get_rle_bureau_loan_feature_variations(
     return tracking
 
 
-def get_rle_bureau_loan_feature_by_client_variations(
+def get_rle_bureau_loan_feature_by_client_variation(
     data: pd.DataFrame,
     features: Union[str, List[str]]
 ) -> pd.DataFrame:
@@ -716,3 +741,299 @@ def get_extended_clean_previous_application(
 
 def get_extended_clean_previous_application_by_client():
     pass
+
+
+""" Installments Payments
+"""
+
+def get_installments_payments_by_installment_and_version(
+    data: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    Aggregate installment payment data by installment and version.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The input DataFrame containing installment payment data.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with aggregated installment payment information, including
+        the days of installment, the installment amount, the count of payments,
+        the start and end days of payment, and the total payment amount.
+
+    Notes
+    -----
+    This function aggregates installment payment data based on the installment
+    number and version, summarizing payment-related information.
+    """
+    # Select relevant columns for aggregation
+    data = data[[
+        "NUM_INSTALMENT_VERSION",
+        "AMT_INSTALMENT", "AMT_PAYMENT",
+        "DAYS_INSTALMENT", "DAYS_ENTRY_PAYMENT"
+    ]].reset_index()
+
+    # Sort the data for easier aggregation
+    data = data.sort_values(by=[
+        "SK_ID_CURR", "SK_ID_PREV",
+        "NUM_INSTALMENT_NUMBER", "NUM_INSTALMENT_VERSION",
+        "DAYS_ENTRY_PAYMENT"
+    ])
+    
+    # Group the data for aggregation
+    data = data.groupby(by=[
+        "SK_ID_CURR", "SK_ID_PREV",
+        "NUM_INSTALMENT_NUMBER", "NUM_INSTALMENT_VERSION"
+    ])
+
+    # Perform aggregation
+    data = data.agg({
+        "DAYS_INSTALMENT": "first",
+        "AMT_INSTALMENT": "first",
+        "DAYS_ENTRY_PAYMENT": ["count", "last", "first"],
+        "AMT_PAYMENT": "sum"
+    })
+
+    # Rename the aggregated columns
+    data.columns = [
+        "DAYS_INSTALMENT", "AMT_INSTALMENT", "CNT_PAYMENT",
+        "DAYS_ENTRY_PAYMENT_START", "DAYS_ENTRY_PAYMENT_END",
+        "AMT_PAYMENT"
+    ]
+    
+    return data
+
+
+def get_clean_installments_payments_base(
+    data: pd.DataFrame
+) -> pd.DataFrame:
+    base_data = get_installments_payments_by_installment_and_version(data)
+    na_inst_case = base_data.AMT_INSTALMENT == 0
+    base_data.loc[na_inst_case, "AMT_INSTALMENT"] = base_data[na_inst_case].AMT_PAYMENT
+    return base_data
+
+
+def get_installments_payments_by_version_deprecated(
+    data: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    DEPRECATED  False hypothesis
+    Use get_installments_payments_by_installment instead
+    
+    Aggregate installment payment data by version.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The input DataFrame containing installment payment data.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with aggregated installment payment information, including
+        the minimum and maximum version numbers, the count of versions, the
+        minimum and maximum installment amounts, and the minimum and maximum
+        payment amounts.
+
+    Notes
+    -----
+    This function aggregates installment payment data based on the installment
+    number, summarizing version-related information.
+
+    The input `data` should be the output of the
+    `get_installments_payments_by_installment_and_version`
+    function.
+    """
+    # Reset the index for grouping
+    data = data.reset_index()
+
+    # Group the data by relevant columns
+    data = data.groupby(by=[
+        "SK_ID_CURR", "SK_ID_PREV", "NUM_INSTALMENT_NUMBER"
+    ])
+
+    # Perform and return aggregation
+    return data.agg({
+        "NUM_INSTALMENT_VERSION" : ["min", "max", "count"],
+        "AMT_INSTALMENT" : ["min", "max"],
+        "AMT_PAYMENT": ["min", "max"]
+    })
+
+
+def get_installments_payments_by_installment(
+    data: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    Aggregate installment payment data by installment.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The input DataFrame containing installment payment data.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with aggregated installment payment information, including
+        the minimum and maximum version numbers, the count of versions, the
+        sum of installment amounts, and the last payment amount.
+
+    Notes
+    -----
+    This function aggregates installment payment data based on the installment
+    number, summarizing version-related information.
+
+    The input `data` should be the output of the
+    `get_installments_payments_by_installment_and_version`
+    function.
+    """
+    # Reset the index for grouping
+    data = data.reset_index()
+
+    # Group the data by relevant columns
+    data = data.groupby(by=[
+        "SK_ID_CURR", "SK_ID_PREV", "NUM_INSTALMENT_NUMBER"
+    ])
+
+    # Perform and return aggregation
+    data = data.agg({
+        "NUM_INSTALMENT_VERSION" : ["min", "max", "count"],
+        "AMT_INSTALMENT" : "sum",
+        "AMT_PAYMENT": "last",
+        "DAYS_INSTALMENT" : ["max", "min"],
+        "CNT_PAYMENT": "sum",
+        "DAYS_ENTRY_PAYMENT_START": "max",
+        "DAYS_ENTRY_PAYMENT_END": "min"
+    })
+    
+    data.columns = [
+        "V_MIN", "V_MAX", "V_COUNT", "AMT_INSTALMENT", "AMT_PAYMENT",
+        "DAYS_INSTALMENT_START", "DAYS_INSTALMENT_END",
+        "CNT_PAYMENT", "DAYS_ENTRY_PAYMENT_START", "DAYS_ENTRY_PAYMENT_END"
+    ]
+    
+    return data
+
+
+
+def filter_installments_payments_by_version_outliers(
+    data: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    DEPRECATED False hypothesis
+
+    Filter installment payment data by version outliers.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The input DataFrame containing installment payment data.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with filtered installment payment data, excluding rows
+        where the maximum payment amount is less than or equal to the minimum
+        payment amount.
+
+    Notes
+    -----
+    This function filters installment payment data to remove rows where the
+    maximum payment amount is less than or equal to the minimum payment amount.
+
+    The input `data` should be the output of the `get_installments_payments_by_version`
+    function.
+    """
+    pyt_max = data[("AMT_PAYMENT", "max")]
+    pyt_min = data[("AMT_PAYMENT", "min")]
+
+    return data[pyt_max > pyt_min]
+
+
+def _get_clean_installments_payments_by_installment_and_version(
+    data: pd.DataFrame,
+    outliers: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    DEPRECATED False hypothesis
+    
+    Get clean installment payment data by installment and version.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The input DataFrame containing installment payment data.
+
+    outliers : pd.DataFrame
+        The DataFrame containing version outliers identified for filtering.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with cleaned installment payment data after removing rows
+        associated with version outliers.
+
+    Notes
+    -----
+    This function filters installment payment data based on version outliers
+    provided in the `outliers` DataFrame.
+    """
+    # Reset the index for grouping
+    drop_index = data.reset_index(level=3)
+    
+    # Extract the NUM_INSTALMENT_VERSION column
+    drop_index = drop_index[["NUM_INSTALMENT_VERSION"]]
+    
+    # Locate rows with outliers
+    drop_index = drop_index.loc[outliers.index]
+    
+    # Reset the index
+    drop_index = drop_index.reset_index()
+    
+    # Identify rows to keep (non-duplicates)
+    keep_index = drop_index.drop_duplicates(
+        subset=drop_index.columns[:-1],
+        keep="last"
+    )
+    
+    # Filter out rows based on the keep_index, keeping only non-duplicate rows
+    drop_index = drop_index[~drop_index.index.isin(keep_index.index)]
+    
+    # Create a MultiIndex from the rows to drop
+    drop_index = pd.MultiIndex.from_frame(drop_index)
+    
+    # Create a mask to filter the data
+    mask = ~data.index.isin(drop_index)
+    
+    return data[mask]
+
+
+def get_clean_installments_payments_by_installment_and_version(
+    data: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    DEPRECATED False hypothesis
+    
+    Get clean installment payment data by installment and version.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The input DataFrame containing installment payment data.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with cleaned installment payment data after removing rows
+        associated with version outliers.
+    """
+    aggregated_by_version = get_installments_payments_by_installment_and_version(data)
+    aggregated_version = get_installments_payments_by_version(aggregated_by_version)
+    outliers = filter_installments_payments_by_version_outliers(aggregated_version)
+    return _get_clean_installments_payments_by_installment_and_version(
+        aggregated_by_version,
+        outliers
+    ).copy()
