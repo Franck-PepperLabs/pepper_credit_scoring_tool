@@ -1,15 +1,41 @@
+from typing import List
+import logging
 import streamlit as st
-import pandas as pd
 import requests
+from _build_url import build_url
+import pandas as pd
+# from home_credit.api import (
+#     get_table_names via route /api/table_names,
+#     get_table_range via route /api/table
+# )
+
+logging.basicConfig(level=logging.INFO)  # Initialize logging level
+
+def log_call_info(callable_name: str, kwargs: dict | None = None) -> None:
+    kwargs_str = ",".join(
+        [f"{k}={v}" for k, v in kwargs.items()]
+    ) if kwargs else ""
+    logging.info(f"{callable_name}({kwargs_str})")
+
 
 # FastAPI server URL
-fast_api_server_url = "http://127.0.0.1:8000"
+server_params = {
+    "scheme": "http",
+    "hostname": "localhost",
+    "port": 8000
+}
+
+def get_response(route: str, query_params: dict | None = None) -> requests.Response:
+    query_url = build_url(**server_params, path=route, query=query_params)
+    return requests.get(query_url)
 
 
 # Function to get available tables from FastAPI
 @st.cache_data
-def get_table_names():
-    response = requests.get(f"{fast_api_server_url}/api/table_names")
+def get_table_names() -> List[str]:
+    """Get a list of available table names."""
+    log_call_info("load_table")
+    response = get_response("/api/table_names")
     if response.status_code == 200:
         return response.json()
     st.error("Failed to fetch available tables.")
@@ -18,14 +44,12 @@ def get_table_names():
 
 # Function to load the selected table using FastAPI
 @st.cache_data
-def load_table(table_name, start=0, stop=10, features=None):
-    params = {
-        "table_name": table_name,
-        "start": start,
-        "stop": stop,
-        "features": features
-    }
-    response = requests.get(f"{fast_api_server_url}/api/table", params=params)
+def load_table(table_name, start=0, stop=10, features=None) -> pd.DataFrame:
+    # TODO : features --> implémenter ce filtrage côté API
+    """Get a specified range of rows from a table."""
+    query_params = locals().copy()
+    log_call_info("load_table", query_params)
+    response = get_response("/api/table", query_params)
     if response.status_code == 200:
         data_json = response.json()
         return pd.read_json(data_json, orient="split")
@@ -68,9 +92,16 @@ def show_table(table_name, table_data):
     st.dataframe(selected_data)
 
 
+# Initialize the session variable 'n_runs'
+if "n_runs" not in st.session_state:
+    st.session_state.n_runs = 0
+
 # Main Streamlit app
 def main():
-    st.title("Data Table Viewer")
+    st.session_state.n_runs += 1
+    logging.info(f"{'-' * 20} main run {st.session_state.n_runs}")
+
+    st.title("Home Credit Table Viewer")
 
     # Sidebar controls
     st.sidebar.header("Options")

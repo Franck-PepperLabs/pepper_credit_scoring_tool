@@ -11,8 +11,6 @@ logging.info("get_table_names router started")
 
 @router.get("/api/table_names", response_model=List[str])
 async def get_table_names():
-    """
-    Get a list of available table names.
-    """
+    """Get a list of available table names."""
     logging.info("get_table_names()")
     return _get_table_names()

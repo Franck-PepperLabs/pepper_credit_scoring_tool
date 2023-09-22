@@ -1,7 +1,5 @@
-from decouple import config
-import os
-os.environ["PROJECT_DIR"] = config("PROJECT_DIR", default="")
-os.environ["PYTHONPATH"] = config("PYTHONPATH", default="")
+from _set_env import setup_python_path
+setup_python_path()  # Update the PYTHONPATH and PROJECT_DIR from .env file
 
 import streamlit as st
 

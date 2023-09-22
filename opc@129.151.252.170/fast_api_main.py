@@ -19,10 +19,10 @@ app = FastAPI()
 logging.info("Fast API started")
 
 @app.get("/")
-def hello_world():
+def welcome():
     # Ajoutez un message de journalisation pour indiquer que la fonction est appelée
-    logging.info("hello_world() called.")
-    return {"message": "Hello, World!"}
+    logging.info("welcome() called.")
+    return {"message": "Welcome to Home Credit Dashboard"}
 
 
 # Include routers or individual routes here if necessary
