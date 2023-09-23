@@ -7,7 +7,31 @@ import pandas as pd
 import numpy as np
 import random
 
-from home_credit.load import get_table, get_table_loaders_dict
+from home_credit.load import (
+    # get_table_loaders_dict,
+    get_table,
+    get_target as _get_target,
+    get_main_map as _get_main_map
+)
+
+from home_credit.utils import get_table_names as _get_table_names
+
+# Amorce migration
+from home_credit.merge import currentize
+# from home_credit.tables import currentize
+
+
+def get_table_names() -> List[str]:
+    """
+    Get a list of available table names.
+
+    Returns
+    -------
+    List[str]
+        A list of table names.
+    """
+    # return list(get_table_loaders_dict().keys())
+    return _get_table_names()
 
 
 def _parse_range_args(*args: Union[Tuple[int], Tuple[int, int]]) -> Tuple[int, int]:
@@ -112,19 +136,30 @@ def get_table_range(
     return table.iloc[start:stop]
 
 
-def get_table_names() -> List[str]:
-    """
-    Get a list of available table names.
-
-    Returns
-    -------
-    List[str]
-        A list of table names.
-    """
-    return list(get_table_loaders_dict().keys())
+def get_target() -> pd.DataFrame:
+    return _get_target()
 
 
-def predict(
+def get_main_map() -> pd.DataFrame:
+    return _get_main_map()
+
+
+def get_client_data(table_name: str, client_id: int) -> pd.DataFrame:
+    """Extraction des données d'une table filtrées sur un client"""
+    # Load the table data
+    data = get_table(table_name)
+    
+    # Check if the table requires currentization, e.g., 'bureau_balance'
+    if "SK_ID_CURR" not in data:
+        currentize(data)
+        data.dropna(inplace=True)
+        data.SK_ID_CURR = data.SK_ID_CURR.astype(int)
+    
+    # Filter and return client-specific data
+    return data[data.SK_ID_CURR == client_id]
+
+
+def get_predict(
     sk_curr_id: int,
     proba: bool = False
 ) -> Union[int, float]:

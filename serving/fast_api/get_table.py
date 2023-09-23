@@ -1,12 +1,9 @@
-# from fastapi import APIRouter, Query
-# import logging
-# logging.basicConfig(level=logging.INFO)
 from _router_commons import *
 from home_credit.api import get_table_range
 
 
 router = APIRouter()
-logging.info("<get_table> router started")
+logging.info("<table> router started")
 
 
 @router.get("/api/table")
@@ -44,7 +41,6 @@ async def get_table(
     pd.DataFrame
         A DataFrame containing the selected range of rows from the table.
     """
-    log_call_info("get_table", locals().copy())
-    #logging.info(f"get_table({table_name}, {start}, {stop})")
+    log_call_info(this_f_name(), locals().copy())
     return get_table_range(table_name, start, stop).to_json(orient="split")
 

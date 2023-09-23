@@ -1,24 +1,28 @@
 # Modules utilisés par l'API
 
-- **`home_credit.api.get_table_names`** : retourne la liste des tables disponibles.
-- **`home_credit.api.get_table_range`** : retourne une plage de lignes de l'une des tables disponibles.
+**`home_credit.api`** est le module d'interface (_facade pattern_) qui fait le lien vers l'ensembles des ressources des packages **`pepper`** et **`home_credit`** nécessaires pour alimenter l'API.
+
+Cette approche permet 1/ d'éviter de polluer l'application Fast API avec des détails d'implémentation et de lui laisser le rôle d'exposition HTTP/JSON des ressources à rendre accessibles en tant que services, 2/ de découpler l'application Fast API de cette implémentation, et de pouvoir modifier celle-ci sans impact sur les routes Fast API.
+
+Fonctions de **`home_credit.api`** :
+- **`get_table_names`** : retourne la liste des tables disponibles.
+- **`get_table_range`** : retourne une plage de lignes de l'une des tables disponibles.
+- **`get_target`** : retourne les classes cibles pour l'ensemble des clients, avec -1 pour coder les clients de l'ensemble de test (classe indéterminée et donc à prédire).
+- **`get_main_map`** : retourne la table associative des clés primaires du jeu de donnée, associées avec la cible ('SK_ID_CURR', 'SK_ID_BUREAU', 'SK_ID_PREV', `TARGET`). Cette table joue un rôle technique dans l'application Dashboard.
+- **`get_client_data`** : retourne une table filtrée sur un client donné.
+- **`get_predict`** : retourne une prédiction de risque de défaut pour un client donné.
 
 # Fichiers du serving d'API
 
 - **`fast_api_main.py`** : application de serving principale. Elle produit la route `/` ("Welcome") et délègue aux routeurs secondaires la gestion des autres routes, organisées par modules spécialisés.
-    - **utilise** :
-        - `fastapi.FastAPI` comme framework d'application de serving.
-        - `logging` pour la gestion de la journalisation
-        - `os`, `sys`, `dotenv` pour l'initialisation de l'environnement à partir d'un fichier `.env`
-        - les routeurs de `get_table_names` et `get_table`.
-    - **utilisée par** : lancement du serveur d'API
 - **`get_table_names.py`** (route `/api/table_names`) : retourne la liste des tables disponibles.
-    - **utilise** : `home_credit.api.get_table_names`.
-    - **utilisée par** :
-        - `st_load_table_direct`, `st_load_table_api_v2` pour alimenter la liste de sélection de la table à afficher.
-        - `customer_data.py` pour itérer sur l'ensemble des tables et afficher les informations qu'elle contient sur un client donné. NB > actuellement, ce n'est qu'un prototype avec sa propre fonction `get_table_names` câblée en dur.
 - **`get_table.py`** (route `/api/table`) : retourne une plage de lignes de l'une des tables disponibles.
-    - **utilise** : `home_credit.api.get_table_range`.
+- **`get_target.py`** (route `/api/target`) : retourne les classes cibles pour l'ensemble des clients.
+- **`get_main_map`** : retourne la table associative des clés primaires du jeu de donnée.
+- **`get_client_data`** : retourne une table filtrée sur un client donné.
+- **`get_predict`** : retourne une prédiction de risque de défaut pour un client donné.
+
+Ces fichiers sont complétés par un module **`_router_commons`** qui contient des instructions d'initialisation comme par exemple le niveau des traces de journalisation et quelques fonctions utilitaires partagées entre les routers. Chaque router, y compris le routeur principal, importe l'intégralité de ce module commun.
 
 # Lancement et check du serveur d'API
 
@@ -34,21 +38,25 @@ Vérifier que tout fonctionne bien :
 
 Se rendre sur http://localhost:8000. L'écran suivant devrait s'afficher :
 
-![fast_api_welcome](../../img/serving/fast_api_welcome.png)
+![fast_api_welcome](./_img/fast_api_welcome.png)
 
 Se rendre sur http://localhost:8000/docs. L'écran de la documentation d'API Swagger devrait s'afficher :
 
-![fast_api_docs_swagger](../../img/serving/fast_api_docs_swagger.png)
+![fast_api_docs_swagger](./_img/fast_api_docs_swagger.png)
 
 Se rendre sur http://localhost:8000/redoc. L'écran de la documentation d'API Redocly devrait s'afficher :
 
-![fast_api_docs_redocly](../../img/serving/fast_api_docs_redocly.png)
+![fast_api_docs_redocly](./_img/fast_api_docs_redocly.png)
 
 Traces d'exécution (journalisation) du serveur d'API :
 
-![fast_api_server_logging](../../img/serving/fast_api_server_logging.png)
+![fast_api_server_logging](./_img/fast_api_server_logging.png)
 
-# Déploiement et exécution sur une offre Oracle Cloud Free Tier
+Les traces permettent de visualiser les routes invoquées et avec quels arguments.
+
+Pour désactiver ces traces, il suffit de modifier le niveau de trace `logging.INFO` fixé dans le fichier **`_router_commons`**. 
+
+# Annexe : Déploiement et exécution sur une offre Oracle Cloud Free Tier
 
 Services **ALWAYS FREE** : de vraies ressources, toujours gratuit, jamais d'interruption.
 
@@ -137,7 +145,7 @@ Adresse IP publique: `{instance-ip-addr}`
 
 Nom de domaine: 
 
-![oracle_home_credit_fast_api_instance](../../img/serving/oracle_home_credit_fast_api_instance.png)
+![oracle_home_credit_fast_api_instance](./_img/oracle_home_credit_fast_api_instance.png)
 
 ### Mise à jour de l'environnement
 
@@ -218,7 +226,6 @@ cd {project-dir}/python/
 pipreqs ./ --encoding=utf-8
 
 ```
-
 #### Installation des dépendances Python
 
 On refait (avec les deux `requirements.txt` précédents fusionnés)

@@ -1,38 +1,30 @@
-# home_credit.customer_data_viewer.py
-
-import os
-import sys
-from dotenv import load_dotenv
-import pandas as pd
-import streamlit as st
-from home_credit.load import get_target, get_main_map, get_table
-from home_credit.merge import currentize
-# from home_credit.utils import get_table_names
-
-
-def setup_python_path():
-    # Update the PYTHONPATH and PROJECT_DIR from .env file
-    load_dotenv()
-    if python_path := os.getenv("PYTHONPATH"):
-        python_path_list = python_path.split(";")
-        for path in python_path_list:
-            sys.path.insert(0, path)
+from _dashboard_commons import *
 
 
 @st.cache_data
-def get_client_targets() -> pd.DataFrame:
-    # Load the client targets
-    return get_target()
+def get_target() -> pd.DataFrame:  # async
+    """Load the client targets."""
+    log_call_info(this_f_name())
+    from home_credit.load import get_target as _get_target
+    return _get_target()
 
 
 @st.cache_data
-def get_client_main_map() -> pd.DataFrame:
-    # Load the main map data
-    return get_main_map()
+def get_main_map() -> pd.DataFrame:  # async
+    """Load the main map data."""
+    log_call_info(this_f_name())
+    from home_credit.load import get_main_map as _get_main_map
+    return _get_main_map()
 
 
 @st.cache_data
-def get_client_data(table_name, client_id) -> pd.DataFrame:
+def get_client_data(table_name: str, client_id: int) -> pd.DataFrame:
+    """Load the client data from table."""
+    log_call_info(this_f_name(), locals().copy())
+    # Lazy imports
+    from home_credit.load import get_table
+    from home_credit.merge import currentize
+
     # Load the main map data
     data = get_table(table_name)
     
@@ -46,7 +38,7 @@ def get_client_data(table_name, client_id) -> pd.DataFrame:
     return data[data.SK_ID_CURR == client_id]
 
 
-def get_table_names():
+def get_table_names() -> List[str]:
     # Hard-coded list to set the selection and order of sections
     return [
         "application", "bureau", "bureau_balance",
@@ -54,20 +46,23 @@ def get_table_names():
         "credit_card_balance", "installments_payments"
     ]
 
+
 def client_selector() -> pd.DataFrame:
+    log_call_info(this_f_name())
+    
     # Sidebar
     st.sidebar.title("Client Selection Filters")
 
     # Load the clients list with targets
-    client_targets = get_client_targets()
+    client_targets = get_target()
     target_counts = client_targets.value_counts()
 
     # Load the main map data
-    client_infos = get_client_main_map()
+    client_infos = get_main_map()
 
     # Filter by Target Status
     target_values = []
-    if st.sidebar.checkbox(f"Non-Defaulter ({target_counts[0]})", value=True):
+    if st.sidebar.checkbox(f"Non-Defaulter ({target_counts[0]})", value=False):
         target_values.append(0)
     if st.sidebar.checkbox(f"Defaulter ({target_counts[1]})", value=True):
         target_values.append(1)
@@ -81,13 +76,13 @@ def client_selector() -> pd.DataFrame:
     # Filter by Minimum Bureau Tracking
     min_bureau_tracking = st.sidebar.number_input(
         "Minimum Bureau Tracking",
-        min_value=0, value=0
+        min_value=0, value=5
     )
 
     # Filter by Minimum Previous Application Tracking
     min_prev_app_tracking = st.sidebar.number_input(
         "Minimum Previous Application Tracking",
-        min_value=0, value=0
+        min_value=0, value=5
     )
 
     # Apply Minimum Tracking filter
@@ -97,9 +92,24 @@ def client_selector() -> pd.DataFrame:
     ]
 
 
+def pivoted_display(
+    client_id: int,
+    table_name: str | List[str],
+    index: str | List[str],
+    columns: str | List[str],
+    values: str | List[str]
+) -> None:
+    """Pivoted display of table."""
+    log_call_info(this_f_name(), locals().copy())
+    st.header(f"`{table_name.upper()}` pivoted data")
+    client_data = get_client_data(table_name, client_id)
+    client_data.MONTHS_BALANCE = -client_data.MONTHS_BALANCE
+    client_data = client_data.pivot(index=index, columns=columns, values=values)
+    st.dataframe(client_data)
+
+
 def main():
-    # Set up Python path
-    setup_python_path()
+    log_main_run()
 
     # Create a title for the app
     st.title("Client Data Viewer")
@@ -118,31 +128,22 @@ def main():
         st.dataframe(client_data)
 
     # Bureau balance pivoted display
-    table_name = "bureau_balance"
-    st.header(f"`{table_name.upper()}` pivoted data")
-    client_data = get_client_data(table_name, client_id)
-    client_data.MONTHS_BALANCE = -client_data.MONTHS_BALANCE
-    client_data = client_data.pivot(
-        index="SK_ID_BUREAU", columns="MONTHS_BALANCE", values="STATUS")
-    st.dataframe(client_data)
+    pivoted_display(
+        client_id, "bureau_balance",
+        "SK_ID_BUREAU", "MONTHS_BALANCE", "STATUS"
+    )
 
     # POS CASH balance pivoted display
-    table_name = "pos_cash_balance"
-    st.header(f"`{table_name.upper()}` pivoted data")
-    client_data = get_client_data(table_name, client_id)
-    client_data.MONTHS_BALANCE = -client_data.MONTHS_BALANCE
-    client_data = client_data.pivot(
-        index="SK_ID_PREV", columns="MONTHS_BALANCE", values="NAME_CONTRACT_STATUS")
-    st.dataframe(client_data)
+    pivoted_display(
+        client_id, "pos_cash_balance",
+        "SK_ID_PREV", "MONTHS_BALANCE", "NAME_CONTRACT_STATUS"
+    )
 
     # Credit Car balance pivoted display
-    table_name = "credit_card_balance"
-    st.header(f"`{table_name.upper()}` pivoted data")
-    client_data = get_client_data(table_name, client_id)
-    client_data.MONTHS_BALANCE = -client_data.MONTHS_BALANCE
-    client_data = client_data.pivot(
-        index="SK_ID_PREV", columns="MONTHS_BALANCE", values="NAME_CONTRACT_STATUS")
-    st.dataframe(client_data)
+    pivoted_display(
+        client_id, "credit_card_balance",
+        "SK_ID_PREV", "MONTHS_BALANCE", "NAME_CONTRACT_STATUS"
+    )
 
     # Installments payments pivoted display
     # table_name = "installments_payments"
@@ -155,4 +156,6 @@ def main():
 
 
 if __name__ == "__main__":
+    init_session()
     main()
+

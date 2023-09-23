@@ -4,21 +4,23 @@
 
 # from typing import List, Union
 from _router_commons import *
-from home_credit.api import predict as _predict
-
+from home_credit.api import get_predict as _get_predict
+from fastapi.encoders import jsonable_encoder
 
 router = APIRouter()
 logging.info("<predict> router started")
 
 
 @router.get("/api/predict")
-async def predict(
+async def get_predict(
     sk_curr_id: int,
     proba: bool = False
-) -> Union[int, float]:
+): 
+    # Note: Avoid explicitly typehinting the return value
+    # with Union or |, as it enforces casting to the first type.
     """...."""
-    log_call_info("predict", locals().copy())
-    return _predict(sk_curr_id, proba)
+    log_call_info(this_f_name(), locals().copy())
+    return _get_predict(sk_curr_id, proba)
 
 # TODO Old Flask code à réviser / intégrer
 
