@@ -1,22 +1,42 @@
-from flask import Flask, jsonify
-from home_credit.load import load_prep_dataset
-from home_credit.model_persist import load_model
-from home_credit.best_model_search import train_preproc
-from sklearn.preprocessing import MinMaxScaler
+# from fastapi import APIRouter
+# import logging
+# logging.basicConfig(level=logging.INFO)
 
-# Création de l'application Flask
-app = Flask(__name__)
+# from typing import List, Union
+from _router_commons import *
+from home_credit.api import predict as _predict
 
+
+router = APIRouter()
+logging.info("<predict> router started")
+
+
+@router.get("/api/predict")
+async def predict(
+    sk_curr_id: int,
+    proba: bool = False
+) -> Union[int, float]:
+    """...."""
+    log_call_info("predict", locals().copy())
+    return _predict(sk_curr_id, proba)
+
+# TODO Old Flask code à réviser / intégrer
+
+"""
 # Chargement du jeu de données
+from home_credit.load import load_prep_dataset
 data = load_prep_dataset("baseline_v1")
 print(f"baseline_v1 loaded {data.shape}")
 
 # Charger le classifieur
+from home_credit.model_persist import load_model
 model = load_model("lgbm_baseline_default_third_party")
 print(f"classifier loaded {model}")
 
-@app.route("/customer/<int:customer_id>")  #, methods=["GET"])
-def customer(customer_id):
+from home_credit.best_model_search import train_preproc
+from sklearn.preprocessing import MinMaxScaler
+from flask import jsonify
+def old_predict(customer_id):
     print("customer id:", customer_id)
     customer = data[data.SK_ID_CURR == customer_id]
     print(customer)
@@ -35,10 +55,4 @@ def customer(customer_id):
         "y_prob": y_prob,
         "y_pred": y_pred
     })
-
-
-# Assure que `run` n'est exécuté que si le script est lancé directement
-# Et non via l'indirection d'un import
-if __name__ == "__main__":
-    app.run()
-
+"""

@@ -4,6 +4,8 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 import pandas as pd
+import numpy as np
+import random
 
 from home_credit.load import get_table, get_table_loaders_dict
 
@@ -121,3 +123,10 @@ def get_table_names() -> List[str]:
     """
     return list(get_table_loaders_dict().keys())
 
+
+def predict(
+    sk_curr_id: int,
+    proba: bool = False
+) -> Union[int, float]:
+    # TODO connect with back office
+    return random.random() if proba else random.randint(0, 1)

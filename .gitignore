@@ -130,6 +130,7 @@ dmypy.json
 
 _deliverable/
 _trash_me/
+_ssh/
 dataset/
 img/
 kernels/
