@@ -1,5 +1,67 @@
+"""
+Module: home_credit/impute.py
+
+...
+
+Functions:
+- `default_imputation(data: pd.DataFrame) -> pd.DataFrame`:
+    Impute missing values in a DataFrame using the median of each column.
+    Missing values are first replaced with NaN values before imputation.
+    Only the training data (TARGET > -1) is used to fit the imputer.
+"""
+
+import logging
+
 import numpy as np
 import pandas as pd
+
+from sklearn.impute import SimpleImputer
+
+
+def default_imputation(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Impute missing values in a DataFrame using the median of each column.
+    Missing values are first replaced with NaN values before imputation. 
+    Only the training data (TARGET > -1) is used to fit the imputer.
+    
+    Parameters
+    ----------
+    data : pd.DataFrame
+        A pandas DataFrame containing the data to be imputed.
+    
+    Returns
+    -------
+    A pandas DataFrame with imputed values.
+    """
+    logging.info("Running default_imputation...")
+    
+    # Replace infinite values with NaN
+    logging.debug("Replacing infinite values with NaN...")
+    logging.debug(f"\t- Data shape before replacement: {data.shape}")
+    data = data.replace([np.inf, -np.inf], np.nan)
+    logging.debug(f"\t- Data shape after replacement: {data.shape}")
+    
+    # Separate training and test data
+    data_train = data[data.TARGET > -1]
+    logging.debug(f"Training data shape: {data_train.shape}")
+
+    # Fit the imputer on the training data only
+    logging.debug("Fitting the imputer on the training data...")
+    imp_median = SimpleImputer(missing_values=np.nan, strategy='median')
+    imp_median.fit(data_train)
+    
+    new_data = imp_median.transform(data)
+    logging.debug(f"Imputed data shape: {new_data.shape}")
+
+    # Impute missing values in the entire dataset
+    imputed_data = pd.DataFrame(
+        new_data,
+        columns=data.columns, index=data.index
+    )
+    
+    logging.info("default_imputation completed.")
+    
+    return imputed_data
 
 
 def impute_credit_card_balance_drawings(data: pd.DataFrame) -> None:

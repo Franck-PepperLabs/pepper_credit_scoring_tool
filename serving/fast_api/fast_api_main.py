@@ -1,16 +1,3 @@
-# from fastapi import FastAPI
-# import logging
-# logging.basicConfig(level=logging.INFO)
-
-# update the PYTHONPATH and PROJECT_DIR from .env file
-# import os, sys
-# from dotenv import load_dotenv
-# load_dotenv()  # take environment variables from .env.
-# if python_path := os.getenv("PYTHONPATH"):
-#    python_path_list = python_path.split(";")
-#    for path in python_path_list:
-#        sys.path.insert(0, path)
-
 from _router_commons import *
 
 from get_table_names import router as table_names_router

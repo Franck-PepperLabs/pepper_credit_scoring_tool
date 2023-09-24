@@ -1,4 +1,4 @@
-from typing import Union, Any, Optional, Callable, List, Tuple, Dict
+from typing import Tuple, List, Dict, Any, Union, Optional, Callable
 from collections import Counter
 
 from IPython.display import display
@@ -7,7 +7,6 @@ import pandas as pd
 import numpy as np
 
 from sklearn.base import ClassifierMixin, TransformerMixin
-from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler
 
 from imblearn.base import BaseSampler
@@ -15,9 +14,6 @@ from imblearn.combine import SMOTETomek
 from imblearn import under_sampling
 
 from sklearn.model_selection import KFold, StratifiedKFold
-
-import sklearn as skl
-import lightgbm as lgbm
 
 from sklearn import metrics
 """.metrics import (
@@ -34,215 +30,10 @@ from pepper.debug import kv, tx, tl, stl
 from pepper.utils import save_and_show, display_key_val
 
 from home_credit.load import load_prep_dataset
+from home_credit.impute import default_imputation
 
-def default_imputation(data: pd.DataFrame) -> pd.DataFrame:
-    """
-    Impute missing values in a DataFrame using the median of each column.
-    Missing values are first replaced with NaN values before imputation. 
-    Only the training data (TARGET > -1) is used to fit the imputer.
-    
-    Parameters
-    ----------
-    data : pd.DataFrame
-        A pandas DataFrame containing the data to be imputed.
-    
-    Returns
-    -------
-    A pandas DataFrame with imputed values.
-    """
-    # Replace infinite values with NaN
-    print("DBG default_imputation data.shape:", data.shape)
-    data = data.replace([np.inf, -np.inf], np.nan) # here a bad idea: , inplace=True)
-    print("DBG default_imputation data.shape:", data.shape)
-    
-    # Separate training and test data
-    data_train = data[data.TARGET > -1]
-    print("DBG default_imputation data_train.shape:", data_train.shape)
-
-    # Fit the imputer on the training data only
-    imp_median = SimpleImputer(missing_values=np.nan, strategy='median')
-    imp_median.fit(data_train)
-    
-    new_data = imp_median.transform(data)
-    print("DBG default_imputation new_data.shape:", new_data.shape)
-
-    # Impute missing values in the entire dataset
-    return pd.DataFrame(
-        new_data,
-        columns=data.columns, index=data.index
-    )
-
-
-def fit_facade(clf, X_y_train, X_y_valid, loss_func):
-    if isinstance(clf, lgbm.LGBMClassifier):
-        """
-        X_train: the training features
-        y_train: the training target variable
-        eval_set: a list of tuples containing validation set features and target variable [(X_valid, y_valid)]
-        eval_metric: the evaluation metric to use during training
-        verbose: controls the verbosity of the training output
-        early_stopping_rounds: stops training if the evaluation metric doesn't improve after early_stopping_rounds rounds
-        sample_weight: sample weights for each training sample
-        """
-        clf.fit(
-            *X_y_train,
-            eval_set=[X_y_train, X_y_valid],
-            eval_metric=loss_func,
-            verbose=200, early_stopping_rounds=200
-        )
-    elif isinstance(clf, ClassifierMixin):
-        clf.fit(*X_y_train)
-    else:
-        raise ValueError(f"Invalid classifier type{type(clf)}")
-
-
-def predict_facade(clf, X):
-    if isinstance(clf, lgbm.LGBMClassifier):
-        return clf.predict(X, num_iteration=clf.best_iteration_)
-    else:
-        return clf.predict(X)
-
-
-def predict_proba_facade(clf, X):
-    if isinstance(clf, lgbm.LGBMClassifier):
-        return clf.predict_proba(X, num_iteration=clf.best_iteration_)[:, 1]
-    else:
-        return clf.predict_proba(X)[:, 1]
-
-
-def get_feat_imp_facade(clf):  # clf.feature_importances_,
-    if isinstance(clf, (
-        lgbm.LGBMClassifier,
-        skl.ensemble.RandomForestClassifier
-    )):
-        return clf.feature_importances_
-    elif isinstance(clf, skl.linear_model.LogisticRegression):
-        return clf.coef_[0]
-    # TODO : Pour le dummy, on peut dire que les features ont une importance égale
-    else:
-        print("Error: Unsupported classifier type")
-
-
-
-def require_probas(metric: Callable) -> bool:
-    """
-    Check if a metric requires probabilistic predictions.
-
-    Parameters
-    ----------
-    metric : callable
-        Metric function.
-
-    Returns
-    -------
-    bool
-        True if the metric requires probabilistic predictions, False otherwise.
-    """
-    return metric in [
-        metrics.roc_auc_score,
-        metrics.brier_score_loss,
-        metrics.average_precision_score,
-        metrics.precision_recall_curve
-    ]
-
-
-def train_preproc(data, scaler, keep_test_samples=False):
-    data_train = data if keep_test_samples else data[data.TARGET > -1]
-    print("DBG data_train.shape:", data_train.shape)
-    data_train = default_imputation(data_train)
-
-    # Exclude non-feature columns from training and test features
-    not_feat_names = ["TARGET", "SK_ID_CURR", "SK_ID_BUREAU", "SK_ID_PREV", "index"]
-    feat_names = data_train.columns.difference(not_feat_names)
-    X = data_train[feat_names]
-    y = data_train.TARGET
-
-    # Scale the data
-    if scaler is not None:
-        scaler.fit(X)
-        X = pd.DataFrame(
-            scaler.transform(X),
-            columns=X.columns,
-            index=X.index
-        )
-    
-    return X, y
-
-
-def eval_predictions(
-    eval_metrics: Dict[str, Callable[[np.ndarray, np.ndarray], float]],
-    scores: Dict[str, Union[float, int]],
-    eval_type: str,
-    y_true: Union[pd.DataFrame, pd.Series, np.ndarray],
-    y_pred_proba: Union[pd.DataFrame, pd.Series, np.ndarray],
-    y_pred_discr: Union[pd.DataFrame, pd.Series, np.ndarray],
-    y_true_name: Optional[str],
-    eval_type_name: Optional[str],
-    verbosity: Optional[int] = 0
-) -> None:
-    """Evaluates predictions using the given evaluation metrics.
-
-    Parameters
-    ----------
-    eval_metrics : dict
-        Dictionary of evaluation metrics to use. The keys are the names of the
-        metrics and the values are callables that take two numpy arrays
-        (`y_true` and `y_pred`) and return a float score.
-    scores : dict
-        Dictionary to store the evaluation scores in.
-    eval_type : str
-        Type of evaluation, e.g. "over_folds" or "overall".
-    y_true : pandas.DataFrame, pandas.Series, or numpy.ndarray
-        True labels for the evaluation data.
-    y_pred_proba : pandas.DataFrame, pandas.Series, or numpy.ndarray
-        Predicted class probabilities for the evaluation data.
-    y_pred_discr : pandas.DataFrame, pandas.Series, or numpy.ndarray
-        Predicted discrete class labels for the evaluation data.
-    y_true_name : str, optional
-        Name of the `y_true` array (used for display purposes only).
-    eval_type_name : str, optional
-        Name of the `eval_type` parameter (used for display purposes only).
-    verbosity : int, optional
-        Verbosity level. If 0, no messages are printed.
-        If >0, progress messages are printed.
-
-    Notes
-    -----
-    For discrete evaluation metrics, the discrete prediction must be used.
-    For metrics that accept probabilistic predictions, using the predicted
-    class probabilities may give better results.
-
-    Examples
-    --------
-    >>> eval_predictions(
-    ...     eval_metrics, scores, "over_folds",
-    ...     y_valid, y_pred_proba, y_pred_discr,
-    ...     y_true_name="y_valid", eval_type_name=f"Fold {fold_id:2d}",
-    ...     verbosity=verbosity
-    ... )
-
-    >>> eval_predictions(
-    ...     eval_metrics, scores, "overall",
-    ...     y_train, oof_preds_proba, oof_preds_discr,
-    ...     y_true_name="y_train", eval_type_name=f"Full",
-    ...     verbosity=verbosity
-    ... )
-    """
-    # Avoid ValueError:
-    #   Only one class present in y_true. The scores are not defined in that case.
-    if y_true.nunique() > 1:
-        for name, eval in eval_metrics.items():
-            y_pred = y_pred_proba if require_probas(eval) else y_pred_discr
-            score = eval(y_true, y_pred)
-            if eval_type == "over_folds":
-                scores[name][eval_type].append(score)
-            else:  # eval_type == "overall":
-                scores[name][eval_type] = score
-            if verbosity > 0:
-                kv(2, f"{eval_type_name} {name}", f"{score:.6f}")
-    elif verbosity > 0:
-        print(f"Only one class present in `{y_true_name}`. "
-               "The scores are not defined in that case.")
+from home_credit.model.preprocessing import train_preproc
+from home_credit.model.eval import eval_predictions
 
 
 # Eval a model with KFold or Stratified KFold
@@ -321,10 +112,11 @@ def kfold_train_and_eval_model(
 
     if eval_metrics is None:
         eval_metrics = {}
+
     eval_metrics.update(loss_func)
 
     # Default imputation, if necessary
-    # (should have been handled by feature enginering)
+    # (should have been handled by feature engineering)
     if (data.isna() | np.isinf(data)).any().any():
         data = default_imputation(data)
 
@@ -419,7 +211,7 @@ def kfold_train_and_eval_model(
         # Get the feature importances for the current fold
         fold_imp = pd.DataFrame({
             "feature": feat_names,
-            "importance": get_feat_imp_facade(clf),   # clf.feature_importances_,
+            "importance": get_feature_importances_facade(clf),   # clf.feature_importances_,
             "fold": fold_id
         })
 
@@ -573,7 +365,7 @@ def kfold_train_and_eval_model_v2(
     kv(verbosity, "Loss function", ""), tx(verbosity, loss_func)
     kv(verbosity, "Eval metrics", ""), tx(verbosity, eval_metrics)
     kv(verbosity,
-       f"On {nfolds} {'stratifed ' if stratified else ''}KFolds", ""
+        f"On {nfolds} {'stratified ' if stratified else ''}KFolds", ""
     )
 
     # Resample the data in a balanced set
@@ -638,7 +430,7 @@ def kfold_train_and_eval_model_v2(
         # Get the feature importances for the current fold
         fold_imp = pd.DataFrame({
             "feature": X.columns, # feat_names,
-            "importance": get_feat_imp_facade(clf),   # clf.feature_importances_,
+            "importance": get_feature_importances_facade(clf),   # clf.feature_importances_,
             "fold": fold_id
         })
 
@@ -696,7 +488,7 @@ def predict(
     threshold: float
 ) -> Tuple[np.ndarray, np.ndarray, float]:
     """
-    Predicts the class probabilities and the binary classification labels
+    Predict the class probabilities and the binary classification labels
     of a classifier for a given set of input features X using a specified 
     probability threshold.
 
@@ -751,7 +543,8 @@ def evaluate_classifier(
     y_true: np.ndarray, 
     threshold: float
 ) -> None:
-    """Evaluates the performance of a binary classifier.
+    """
+    Evaluate the performance of a binary classifier.
 
     Calculates the following metrics:
     * ROC AUC
