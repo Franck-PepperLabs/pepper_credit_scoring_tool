@@ -26,6 +26,12 @@ from home_credit.groupby import (
     get_rle_credit_card_loan_tracking_period,
     
     get_clean_installments_payments_base,
+    get_clean_installments_payments_loan_amount,
+    get_clean_installments_payments_loaned_amount,
+    get_clean_installments_payments_last_version,
+    get_clean_installments_payments_repaid_and_dpd,
+    get_clean_installments_payments_expected_dpd_by_loan,
+    get_clean_installments_payments_expected_dpd_by_client,
     get_installments_payments_by_installment
 )
 # from home_credit.clean_up import *
@@ -459,10 +465,15 @@ class InstallmentsPayments(HomeCreditTable):
         """Impute missing values and correct outliers"""
         # Insert the aggregation counter
         # data.insert(0, "n_PREV", 1)
+        
+        # The basic corrective preprocessing:
+        # if the installment amount is 0, we copy that of the payment.
+        na_inst_case = data.AMT_INSTALMENT == 0
+        data.loc[na_inst_case, "AMT_INSTALMENT"] = data[na_inst_case].AMT_PAYMENT
 
         # Calculate MONTHS_BALANCE based on DAYS_INSTALMENT and insert it
         gregorian_month = 365.2425 / 12
-        months_balance = -(data.DAYS_INSTALMENT // gregorian_month).astype(int)
+        months_balance = (-data.DAYS_INSTALMENT / gregorian_month).astype(np.uint8)
         data.insert(0, "MONTHS_BALANCE", months_balance)
 
     @classmethod
@@ -486,7 +497,7 @@ class InstallmentsPayments(HomeCreditTable):
         if no_na_payment:
             cast_columns(data, "DAYS_ENTRY_PAYMENT", np.uint16)
             # cast_columns(data, "AMT_PAYMENT", np.float16)
-            cast_columns(data, "AMT_PAYMENT", np.float32)
+            # cast_columns(data, "AMT_PAYMENT", np.float32)
 
     @classmethod
     def _get_clean_table(cls, no_na_payment=False) -> pd.DataFrame:
@@ -519,6 +530,100 @@ class InstallmentsPayments(HomeCreditTable):
             lambda: cls._get_clean_table(no_na_payment=no_na_payment),
             f"clean_{cls.name}{'' if no_na_payment else '_with_na_payment'}"
         )
+
+    @classmethod
+    def loan_amount(cls,
+        no_na_payment: Optional[bool] = True,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.DataFrame:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_clean_installments_payments_loan_amount(
+                InstallmentsPayments.clean(no_na_payment=False)
+            ),
+            "clean_installments_payments_loan_amount"
+        )
+
+    @classmethod
+    def loaned_amount(cls,
+        no_na_payment: Optional[bool] = True,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.DataFrame:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_clean_installments_payments_loaned_amount(
+                InstallmentsPayments.loan_amount()
+            ),
+            "clean_installments_payments_loaned_amount"
+        )
+
+    @classmethod
+    def last_version(cls,
+        no_na_payment: Optional[bool] = True,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.DataFrame:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_clean_installments_payments_last_version(
+                InstallmentsPayments.clean(no_na_payment=False)
+            ),
+            "clean_installments_payments_last_version"
+        )
+
+
+    @classmethod
+    def repaid_and_dpd(cls,
+        no_na_payment: Optional[bool] = True,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.DataFrame:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_clean_installments_payments_repaid_and_dpd(
+                InstallmentsPayments.last_version()
+            ),
+            "clean_installments_payments_repaid_and_dpd"
+        )
+
+    @classmethod
+    def expected_dpd_by_loan(cls,
+        no_na_payment: Optional[bool] = True,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.DataFrame:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_clean_installments_payments_expected_dpd_by_loan(
+                InstallmentsPayments.repaid_and_dpd(),
+                InstallmentsPayments.loan_amount()
+            ),
+            "clean_installments_payments_expected_dpd_by_loan"
+        )
+
+    @classmethod
+    def expected_dpd_by_client(cls,
+        no_na_payment: Optional[bool] = True,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.DataFrame:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_clean_installments_payments_expected_dpd_by_client(
+                InstallmentsPayments.repaid_and_dpd(),
+                InstallmentsPayments.loaned_amount()
+            ),
+            "clean_installments_payments_expected_dpd_by_client"
+        )
+
 
     @classmethod
     def clean_base(cls,
@@ -739,7 +844,7 @@ class Application(HomeCreditTable):
     def _to_target_map():
         target_map = Application.raw()[["SK_ID_CURR", "TARGET"]]
         target_map = target_map.set_index("SK_ID_CURR")
-        target_map.TARGET.astype(np.uint8)
+        target_map.TARGET.astype(np.int8)
         return target_map
 
     @classmethod
@@ -965,7 +1070,7 @@ def map_curr_to_target(sk_id_curr: pd.Series) -> pd.Series:
     pd.Series
         Series of corresponding `TARGET` values.
     """
-    return sk_id_curr.map(Application.to_target_map())
+    return sk_id_curr.map(Application.to_target_map()).astype(np.int8)
 
 
 def targetize(data: pd.DataFrame) -> None:
@@ -994,7 +1099,8 @@ def targetize(data: pd.DataFrame) -> None:
     if "SK_ID_CURR" not in data.columns:
         raise ValueError("The DataFrame does not contain the 'SK_ID_CURR' column.")
     
-    data.insert(0, "TARGET", map_curr_to_target(data.SK_ID_CURR))
+    target = map_curr_to_target(data.SK_ID_CURR)
+    data.insert(0, "TARGET", target)
 
 
 def targetize_table(data: pd.DataFrame) -> None:

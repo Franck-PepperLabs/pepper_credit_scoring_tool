@@ -483,8 +483,8 @@ def data_report_to_gsheet(
 """
 
 
-def print_value_counts_dict(data: pd.DataFrame, col: str):
-    vc_dict = data[col].value_counts(dropna=False).to_dict()
+def print_value_counts_dict(data: pd.DataFrame, col: str, normalize=False):
+    vc_dict = data[col].value_counts(normalize=normalize, dropna=False).to_dict()
     print(f"{col} ({len(vc_dict)}): {vc_dict}")
 
 

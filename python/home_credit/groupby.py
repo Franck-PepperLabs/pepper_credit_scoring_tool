@@ -2,6 +2,7 @@ from typing import Callable, Optional, Union, List
 
 from home_credit.load import get_table
 from home_credit.merge import currentize
+from pepper.np_utils import subindex_nd
 from pepper.rle import jumps_rle, series_rle_reduction
 
 import pandas as pd
@@ -807,6 +808,103 @@ def get_installments_payments_by_installment_and_version(
     return data
 
 
+def get_clean_installments_payments_loan_amount(
+    data: pd.DataFrame
+) -> pd.DataFrame:
+    grouped = data.groupby(by=["SK_ID_CURR", "SK_ID_PREV"])
+    loan_amount = (
+        grouped.agg({"AMT_INSTALMENT": "sum"})
+        .rename(columns={"AMT_INSTALMENT": "AMT_LOAN"})
+    )
+    loan_amount.AMT_LOAN = loan_amount.AMT_LOAN.round(2)
+    loan_amount.columns.name = "LOAN_AMOUNT"
+    return loan_amount
+
+
+def get_clean_installments_payments_loaned_amount(
+    loan_amount: pd.DataFrame
+) -> pd.DataFrame:
+    data = loan_amount.groupby(by="SK_ID_CURR").agg("sum")
+    data = data.rename(columns={"AMT_LOAN": "AMT_LOANED"})
+    data.columns.name = "LOANED_AMOUNT"
+    return data
+
+
+def get_clean_installments_payments_last_version(
+    data: pd.DataFrame
+) -> pd.DataFrame:
+    data = data.reset_index(level="NUM_INSTALMENT_NUMBER")
+    data.columns = ["N", "M", "T", "V", "T0", "T1", "INST", "REPAID"]
+    data = data[["M", "N", "V", "T0", "T1", "INST", "REPAID"]]
+    data = data.reset_index()
+    data = data.sort_values(by=["SK_ID_CURR", "SK_ID_PREV", "N", "V"])
+    data_keys = data[["SK_ID_CURR", "SK_ID_PREV", "N", "V"]]
+    data.insert(4, "n", subindex_nd(data_keys.to_numpy(), sorted=True))
+    data = data.sort_values(by=["SK_ID_CURR", "SK_ID_PREV", "N", "n", "V"])
+    keep_index = data[["SK_ID_CURR", "SK_ID_PREV", "N", "V"]]
+    keep_index = keep_index.drop_duplicates(
+        subset=["SK_ID_CURR", "SK_ID_PREV", "N"],
+        keep="last"
+    )
+    data = data.set_index(["SK_ID_CURR", "SK_ID_PREV", "N", "V"])
+    keep_index = pd.MultiIndex.from_frame(keep_index)
+    return data[data.index.isin(keep_index)]
+
+
+def get_clean_installments_payments_repaid_and_dpd(
+    data: pd.DataFrame 
+) -> pd.DataFrame:
+    data = data.copy()
+    data["DPD"] = data.T1 - data.T0
+    data = data.groupby(by=["SK_ID_CURR", "SK_ID_PREV", "N", "V", "DPD"])
+    data = data.agg({"REPAID": "sum"})
+    data = data.reset_index(level=["N", "V", "DPD"])
+    data = data[["N", "V", "REPAID", "DPD"]]
+    return data
+
+
+def get_clean_installments_payments_expected_dpd_by_loan(
+    repaid_and_dpd: pd.DataFrame,
+    loan_amount: pd.DataFrame
+) -> pd.DataFrame:
+    data = repaid_and_dpd.merge(
+        loan_amount, on=["SK_ID_CURR", "SK_ID_PREV"], how="left"
+    )
+    data["PCT_REPAID"] = data.REPAID / data.AMT_LOAN
+    data["EXP_DPD"] = data.DPD * data["PCT_REPAID"]
+
+    data = data.groupby(by=["SK_ID_CURR", "SK_ID_PREV"]).agg({
+        "REPAID": "sum",
+        "AMT_LOAN": "first",
+        "PCT_REPAID": "sum",
+        "EXP_DPD": "sum"
+    })
+    
+    data.columns.name = "EXP_DPD_BY_LOAN"
+    return data
+
+
+def get_clean_installments_payments_expected_dpd_by_client(
+    repaid_and_dpd: pd.DataFrame,
+    loaned_amount: pd.DataFrame
+) -> pd.DataFrame:
+    data = repaid_and_dpd.merge(
+        loaned_amount, on="SK_ID_CURR", how="left"
+    )
+    data["PCT_REPAID"] = data.REPAID / data.AMT_LOANED
+    data["EXP_DPD"] = data.DPD * data["PCT_REPAID"]
+
+    data = data.groupby(by="SK_ID_CURR").agg({
+        "REPAID": "sum",
+        "AMT_LOANED": "first",
+        "PCT_REPAID": "sum",
+        "EXP_DPD": "sum"
+    })
+
+    data.columns.name = "EXP_DPD_BY_CLIENT"
+    return data
+
+
 def get_clean_installments_payments_base(
     data: pd.DataFrame
 ) -> pd.DataFrame:
@@ -815,52 +913,6 @@ def get_clean_installments_payments_base(
     base_data.loc[na_inst_case, "AMT_INSTALMENT"] = base_data[na_inst_case].AMT_PAYMENT
     return base_data
 
-
-def get_installments_payments_by_version_deprecated(
-    data: pd.DataFrame
-) -> pd.DataFrame:
-    """
-    DEPRECATED  False hypothesis
-    Use get_installments_payments_by_installment instead
-    
-    Aggregate installment payment data by version.
-
-    Parameters
-    ----------
-    data : pd.DataFrame
-        The input DataFrame containing installment payment data.
-
-    Returns
-    -------
-    pd.DataFrame
-        A DataFrame with aggregated installment payment information, including
-        the minimum and maximum version numbers, the count of versions, the
-        minimum and maximum installment amounts, and the minimum and maximum
-        payment amounts.
-
-    Notes
-    -----
-    This function aggregates installment payment data based on the installment
-    number, summarizing version-related information.
-
-    The input `data` should be the output of the
-    `get_installments_payments_by_installment_and_version`
-    function.
-    """
-    # Reset the index for grouping
-    data = data.reset_index()
-
-    # Group the data by relevant columns
-    data = data.groupby(by=[
-        "SK_ID_CURR", "SK_ID_PREV", "NUM_INSTALMENT_NUMBER"
-    ])
-
-    # Perform and return aggregation
-    return data.agg({
-        "NUM_INSTALMENT_VERSION" : ["min", "max", "count"],
-        "AMT_INSTALMENT" : ["min", "max"],
-        "AMT_PAYMENT": ["min", "max"]
-    })
 
 
 def get_installments_payments_by_installment(
@@ -918,8 +970,54 @@ def get_installments_payments_by_installment(
     return data
 
 
+def get_installments_payments_by_version_deprecated(
+    data: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    DEPRECATED  False hypothesis
+    Use get_installments_payments_by_installment instead
+    
+    Aggregate installment payment data by version.
 
-def filter_installments_payments_by_version_outliers(
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The input DataFrame containing installment payment data.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with aggregated installment payment information, including
+        the minimum and maximum version numbers, the count of versions, the
+        minimum and maximum installment amounts, and the minimum and maximum
+        payment amounts.
+
+    Notes
+    -----
+    This function aggregates installment payment data based on the installment
+    number, summarizing version-related information.
+
+    The input `data` should be the output of the
+    `get_installments_payments_by_installment_and_version`
+    function.
+    """
+    # Reset the index for grouping
+    data = data.reset_index()
+
+    # Group the data by relevant columns
+    data = data.groupby(by=[
+        "SK_ID_CURR", "SK_ID_PREV", "NUM_INSTALMENT_NUMBER"
+    ])
+
+    # Perform and return aggregation
+    return data.agg({
+        "NUM_INSTALMENT_VERSION" : ["min", "max", "count"],
+        "AMT_INSTALMENT" : ["min", "max"],
+        "AMT_PAYMENT": ["min", "max"]
+    })
+
+
+def filter_installments_payments_by_version_outliers_deprecated(
     data: pd.DataFrame
 ) -> pd.DataFrame:
     """
@@ -953,7 +1051,7 @@ def filter_installments_payments_by_version_outliers(
     return data[pyt_max > pyt_min]
 
 
-def _get_clean_installments_payments_by_installment_and_version(
+def _get_clean_installments_payments_by_installment_and_version_deprecated(
     data: pd.DataFrame,
     outliers: pd.DataFrame
 ) -> pd.DataFrame:
@@ -1011,7 +1109,7 @@ def _get_clean_installments_payments_by_installment_and_version(
     return data[mask]
 
 
-def get_clean_installments_payments_by_installment_and_version(
+def get_clean_installments_payments_by_installment_and_version_deprecated(
     data: pd.DataFrame
 ) -> pd.DataFrame:
     """
@@ -1031,9 +1129,9 @@ def get_clean_installments_payments_by_installment_and_version(
         associated with version outliers.
     """
     aggregated_by_version = get_installments_payments_by_installment_and_version(data)
-    aggregated_version = get_installments_payments_by_version(aggregated_by_version)
-    outliers = filter_installments_payments_by_version_outliers(aggregated_version)
-    return _get_clean_installments_payments_by_installment_and_version(
+    aggregated_version = get_installments_payments_by_version_deprecated(aggregated_by_version)
+    outliers = filter_installments_payments_by_version_outliers_deprecated(aggregated_version)
+    return _get_clean_installments_payments_by_installment_and_version_deprecated(
         aggregated_by_version,
         outliers
     ).copy()
