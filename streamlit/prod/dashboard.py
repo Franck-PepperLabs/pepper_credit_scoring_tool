@@ -1,18 +1,24 @@
+# dashboard.py
 from _dashboard_commons import *
 from client_default_risk import client_default_risk_main
 from client_viewer import client_viewer_main
+from client_application_details import client_application_details_main
 from table_viewer import table_viewer_main
 
 
 def dashboard_main():
+    log_main_run(this_f_name())
+    
     # Sidebar navigation bar to choose the page
     viewers = {
         "Client Default Risk Viewer": client_default_risk_main,
         "Client Info Explorer": client_viewer_main,
+        "Client Application Details": client_application_details_main,
         "Table Explorer": table_viewer_main,
         # "Feature Explorer": feature_viewer_main
     }
     
+    st.sidebar.title("View Selection")
     # Select a page to view from the sidebar
     viewer_name = st.sidebar.selectbox("Current View", viewers)
 

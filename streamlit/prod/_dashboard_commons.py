@@ -1,3 +1,4 @@
+# _dashboard_commons.py
 from typing import List, Dict, Union, Any
 import os, sys, inspect
 from dotenv import load_dotenv
@@ -66,21 +67,28 @@ def log_call_info(callable_name: str, kwargs: dict | None = None) -> None:
     logging.info(f"{callable_name}({kwargs_str})")
 
 
-def log_main_run():
+def log_main_run(callable_name: str):
     """
     Log the start of a main run in the Streamlit app.
 
     This function increments the 'n_runs' session variable by 1 and logs the run number.
+    Parameters
+    ----------
+    callable_name : str
+        The name of the callable function.
 
     Examples
     --------
     To log the start of a main run:
     >>> def main():
-    >>>     log_main_run()
+    >>>     log_main_run(this_f_name())
     >>>     ...
     """
     st.session_state.n_runs += 1
-    logging.info(f"{'-' * 20} main run {st.session_state.n_runs}")
+    logging.info(
+        f"{'-' * 20} {callable_name} "
+        f"run {st.session_state.n_runs}"
+    )
 
 
 def init_session():

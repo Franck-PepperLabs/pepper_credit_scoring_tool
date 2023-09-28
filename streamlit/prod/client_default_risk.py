@@ -1,3 +1,4 @@
+# client_default_risk.py
 from _dashboard_commons import *
 from _api_getters import get_target, get_predict, get_main_map
 
@@ -108,7 +109,7 @@ def show_client_credit_default_risk(
 
 
 def client_default_risk_main():
-    log_main_run()
+    log_main_run(this_f_name())
 
     st.title("Predict Viewer")
 
