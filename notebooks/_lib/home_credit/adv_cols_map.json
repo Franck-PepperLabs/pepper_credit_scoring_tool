@@ -1,0 +1,43 @@
+{
+    "mappings": {
+        "table_A": {
+            "VARIABLE": ["VAR", "IA", "BLE"],
+            "TRIVIAL_{X}" : {
+                "val": ["{X}"],
+                "par": {"X": [1, 2, 3]}
+            },
+            "FLAG_DOCUMENT_{index}": {
+                "val": ["DOC", "{index}", "FLG"],
+                "par": {
+                    "index": {"range": [2, 5]}
+                }
+            },
+            "COMBINED_{a}_{b}": {
+                "val": ["COMB", "{a}", "{b}"],
+                "par": {
+                    "a": {"range": [2, 5]},
+                    "b": ["A", "SET", "OF", "STR"]
+                }
+            },
+            "FOOBAR": ["FOO", "BAR"]
+        }
+    },
+    "groups": {
+        "table_A": {
+            "simple_variables": ["VARIABLE", "FOOBAR"],
+            "doc_flags_inf_3": {
+                "val": "FLAG_DOCUMENT_{i}",
+                "par": {
+                    "i": {"range": [2, 4]}
+                }
+            },
+            "combined_of_str": {
+                "val": "COMBINED_{a}_{b}",
+                "par": {
+                    "a": {"range": [2, 5]},
+                    "b": ["OF", "STR"]
+                }
+            }
+        }
+    }
+}

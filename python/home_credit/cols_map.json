@@ -207,30 +207,19 @@
             "TOTALAREA_MODE": ["STAT", "TOTAL_AREA", "MOD"],
             "WALLSMATERIAL_MODE": ["STAT", "WALLS_MATERIAL", "MOD"],
             "EMERGENCYSTATE_MODE": ["STAT", "EMERGENCY_STATE", "MOD"],
-            "OBS_30_CNT_SOCIAL_CIRCLE": ["CIRC_30", "OBS", "CNT"],
-            "DEF_30_CNT_SOCIAL_CIRCLE": ["CIRC_30", "DEF", "CNT"],
-            "OBS_60_CNT_SOCIAL_CIRCLE": ["CIRC_60", "OBS", "CNT"],
-            "DEF_60_CNT_SOCIAL_CIRCLE": ["CIRC_60", "DEF", "CNT"],
-            "FLAG_DOCUMENT_2": ["DOC", "2", "FLG"],
-            "FLAG_DOCUMENT_3": ["DOC", "3", "FLG"],
-            "FLAG_DOCUMENT_4": ["DOC", "4", "FLG"],
-            "FLAG_DOCUMENT_5": ["DOC", "5", "FLG"],
-            "FLAG_DOCUMENT_6": ["DOC", "6", "FLG"],
-            "FLAG_DOCUMENT_7": ["DOC", "7", "FLG"],
-            "FLAG_DOCUMENT_8": ["DOC", "8", "FLG"],
-            "FLAG_DOCUMENT_9": ["DOC", "9", "FLG"],
-            "FLAG_DOCUMENT_10": ["DOC", "10", "FLG"],
-            "FLAG_DOCUMENT_11": ["DOC", "11", "FLG"],
-            "FLAG_DOCUMENT_12": ["DOC", "12", "FLG"],
-            "FLAG_DOCUMENT_13": ["DOC", "13", "FLG"],
-            "FLAG_DOCUMENT_14": ["DOC", "14", "FLG"],
-            "FLAG_DOCUMENT_15": ["DOC", "15", "FLG"],
-            "FLAG_DOCUMENT_16": ["DOC", "16", "FLG"],
-            "FLAG_DOCUMENT_17": ["DOC", "17", "FLG"],
-            "FLAG_DOCUMENT_18": ["DOC", "18", "FLG"],
-            "FLAG_DOCUMENT_19": ["DOC", "19", "FLG"],
-            "FLAG_DOCUMENT_20": ["DOC", "20", "FLG"],
-            "FLAG_DOCUMENT_21": ["DOC", "21", "FLG"],
+            "{ext}_{num}_CNT_SOCIAL_CIRCLE": {
+                "map": ["CIRC_{num}", "{ext}", "CNT"],
+                "par": {
+                    "ext" : ["OBS", "DEF"],
+                    "num" : [30, 60]
+                }
+            },
+            "FLAG_DOCUMENT_{index}": {
+                "map": ["DOC", "{index}", "FLG"],
+                "par": {
+                    "index": {"range": [2, 22]}
+                }
+            },
             "AMT_REQ_CREDIT_BUREAU_HOUR": ["RCB", "", "HH"],
             "AMT_REQ_CREDIT_BUREAU_DAY": ["RCB", "", "DD"],
             "AMT_REQ_CREDIT_BUREAU_WEEK": ["RCB", "", "WW"],
@@ -439,15 +428,25 @@
             "housing_stats": [
                 "housing_means", "housing_medians", "housing_modes"
             ],
-            "social_circle_counts": [
-                "OBS_30_CNT_SOCIAL_CIRCLE", "DEF_30_CNT_SOCIAL_CIRCLE",
-                "OBS_60_CNT_SOCIAL_CIRCLE", "DEF_60_CNT_SOCIAL_CIRCLE"
-            ],
-            "credit_bureau_request_counts": [
-                "AMT_REQ_CREDIT_BUREAU_HOUR", "AMT_REQ_CREDIT_BUREAU_DAY",
-                "AMT_REQ_CREDIT_BUREAU_WEEK", "AMT_REQ_CREDIT_BUREAU_MON",
-                "AMT_REQ_CREDIT_BUREAU_QRT", "AMT_REQ_CREDIT_BUREAU_YEAR"
-            ],
+            "social_circle_counts": {
+                "var": "{ext}_{num}_CNT_SOCIAL_CIRCLE",
+                "par": {
+                    "ext" : ["OBS", "DEF"],
+                    "num" : [30, 60]
+                }
+            },
+            "doc_flags": {
+                "var": "FLAG_DOCUMENT_{i}",
+                "par": {
+                    "i": {"range": [2, 22]}
+                }
+            },
+            "credit_bureau_request_counts": {
+                "var": "AMT_REQ_CREDIT_BUREAU_{period}",
+                "par": {
+                    "period": ["HOUR", "DAY", "WEEK", "MON", "QRT", "YEAR"]
+                }
+            },            
             "all_cats": [
                 "CODE_GENDER", "NAME_CONTRACT_TYPE", "NAME_INCOME_TYPE",
                 "NAME_EDUCATION_TYPE", "OCCUPATION_TYPE", "ORGANIZATION_TYPE",
