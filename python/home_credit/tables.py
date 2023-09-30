@@ -6,6 +6,7 @@ from pepper.utils import get_weekdays
 from home_credit.load import load_raw_table, _load_application
 from home_credit.persist import this_f_name, controlled_load
 from home_credit.cols_map import get_cols_map
+from home_credit.kernel import one_hot_encode_all_cats
 
 from home_credit.impute import impute_credit_card_balance_drawings
 from home_credit.groupby import (
@@ -814,9 +815,9 @@ class PreviousApplication(HomeCreditTable):
         # TODO : abstraction : config dans un fichier
 
         # Apply downcasting for various column groups
-        PreviousApplication.cast_cols_group(data, "keys", np.uint16)
+        PreviousApplication.cast_cols_group(data, "keys", np.uint32)
         PreviousApplication.cast_cols_group(data, "last_app_flags", np.uint8)
-        cast_columns(data, "SELLERPLACE_AREA", np.uint16)
+        cast_columns(data, "SELLERPLACE_AREA", np.int32)
 
 
 class Application(HomeCreditTable):
@@ -975,8 +976,10 @@ class Region(HomeCreditTable):
         region = region.sort_values(by=(pivot, "count"), ascending=False)
 
         region = region.reset_index()
-        region.index.name = "RID"
+        region.index.name = "REG_ID"
 
+        # TODO ce devrait être défini dans le fichier de mappage de colonnes
+        # TODO c'est un cas d'application de l'abstraction de règle : tester avec l'intégration
         region.columns = pd.Index([
             ("REGION", "POPULATION"),
             ("REGION", "CLIENTS"),
@@ -995,7 +998,98 @@ class Region(HomeCreditTable):
             ("COMMUTE_FLAG_COUNTS", "C6"),
         ])
         
+        region.columns.names = ["REGION", "details"]
+        
         return region
+    
+    @staticmethod
+    def _to_seller_place_area_map():
+        # Retrieving cleaned data
+        a_reg = Application.clean()[["REGION_POPULATION_RELATIVE"]]
+        pa_spa = PreviousApplication.clean()[["SELLERPLACE_AREA"]]
+        reg_pop = Region.clean()[[("REGION", "POPULATION")]]
+
+        # Merging data into an associative table
+        reg_pop.columns = ["REGION_POPULATION_RELATIVE"]
+        reg_pop = reg_pop.reset_index()
+        reg_spa_map = pd.merge(a_reg, right=pa_spa, on="SK_ID_CURR", how="inner").drop_duplicates()
+        reg_spa_map = pd.merge(reg_spa_map, right=reg_pop, on="REGION_POPULATION_RELATIVE", how="inner")
+
+        # Cleaning and formatting the result
+        reg_spa_map.columns = ["_", "SPA_ID", "REG_ID"]
+        reg_spa_map = reg_spa_map[["REG_ID", "SPA_ID"]]
+        reg_spa_map = reg_spa_map.sort_values(by=["REG_ID", "SPA_ID"])
+        reg_spa_map = reg_spa_map.reset_index(drop=True)
+        reg_spa_map.columns.name = "REG_SPA_MAP"
+        
+        return reg_spa_map
+
+    @classmethod
+    def to_seller_place_area_map(cls,
+        no_cache: Optional[bool] = False,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.Series:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            Region._to_seller_place_area_map, "region_to_seller_place_area_map"
+        )
+
+
+class SellerPlaceArea(HomeCreditTable):
+
+    name = "seller_place_area"
+
+    @classmethod
+    def _get_clean_table(cls, normalize: bool) -> pd.DataFrame:
+        normalize = True
+
+        # Retrieve the list of categorical columns from the previous_application table.
+        sales_cats = PreviousApplication.cols_group("sales_cats")
+
+        # Retrieve the cleaned version of the previous_application table.
+        previous_application = PreviousApplication.clean()
+
+        # Select columns related to 'SELLERPLACE_AREA' and sales categories
+        pa_sales = previous_application[["SELLERPLACE_AREA"] + sales_cats]
+        pa_sales.columns.name = "PA_SALES"
+
+        # Perform one-hot encoding on the selected columns
+        ohe_pa_sales, _ = one_hot_encode_all_cats(pa_sales, drop_first=False, bi_index=True)
+
+        # Group the encoded data by ('SELLERPLACE_AREA', '')
+        grouped = ohe_pa_sales.groupby(by=("SELLERPLACE_AREA", ""))
+        seller_place_area = grouped.agg("sum")
+
+        # Insert a new column for the count of rows in each group
+        seller_place_area.insert(0, ("PREV_APP", "size"), grouped.agg({("SELLERPLACE_AREA", ""): "size"}))
+
+        # Sort the data based on the count of rows in descending order
+        seller_place_area = seller_place_area.sort_values(by=("PREV_APP", "size"), ascending=False)
+
+        # Set the index and column names
+        seller_place_area.index.name = "SPA_ID"
+        seller_place_area.columns.names = ["SELLER_PLACE_AREA", "details"]
+
+        if normalize:
+            # Normalize the data by dividing each column by the count of rows
+            seller_place_area = seller_place_area.div(seller_place_area[("PREV_APP", "size")], axis=0)
+
+        return seller_place_area
+
+    @classmethod
+    def clean(cls,
+        normalize: Optional[bool] = False,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.DataFrame:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: cls._get_clean_table(normalize=normalize),
+            f"clean_{cls.name}{'_normalized' if normalize else ''}"
+        )
+
 
 
 """ Merge utils (replace the old home_credit.merge versions)

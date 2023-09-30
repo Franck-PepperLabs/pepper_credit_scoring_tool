@@ -318,7 +318,7 @@ def aggregate_loan_status(
     # Rename the 'agg_S' column to 'STATUS'
     aggregated.rename(columns={"agg_S": "STATUS"}, inplace=True)
 
-    aggregated.STATUS = aggregated.STATUS.astype(np.float32)
+    aggregated.STATUS = aggregated.STATUS.astype(np.float64)
     
     if result_name:
         aggregated.columns.name = result_name
@@ -471,7 +471,7 @@ def get_bureau_mean_loan_activity(data, alpha=1):
         active = activity.ACTIVE
         months = activity.MONTHS_BALANCE
         activity.ACTIVE = active / (1 + alpha * months)
-    activity = activity.drop(columns="MONTHS_BALANCE")
+    activity = activity.drop(columns=["SK_ID_CURR", "MONTHS_BALANCE"])
     activity = activity.groupby(by="SK_ID_BUREAU")
     activity = activity.agg("mean")
     activity.ACTIVE = activity.ACTIVE.astype(np.float32)
@@ -502,150 +502,12 @@ def get_rle_tracking_period(
 ) -> pd.DataFrame:
     tracking = data.reset_index()
     tracking = tracking[[pivot, "MONTHS_BALANCE"]]
-    # tracking.SK_ID_BUREAU = tracking.SK_ID_BUREAU.astype(np.uint32)
+    tracking = tracking.sort_values(by=[pivot, "MONTHS_BALANCE"])
+    tracking = tracking.drop_duplicates()
     tracking.MONTHS_BALANCE = tracking.MONTHS_BALANCE.astype(np.uint8)
     tracking = tracking.groupby(by=pivot)
-    tracking = tracking.agg({"MONTHS_BALANCE": ["min", "max", "count", jumps_rle]})
-    months_agg_cols = tracking.columns[:3]
-    tracking[months_agg_cols] = tracking[months_agg_cols].astype(np.uint8)
+    tracking = tracking.agg(jumps_rle)
     tracking.columns.name = f"{base_name}_TRACKING_PERIOD"
-    return tracking
-
-
-def get_rle_pos_cash_loan_tracking_period(data: pd.DataFrame) -> pd.DataFrame:
-    return get_rle_tracking_period(data, "SK_ID_PREV", "POS_CASH_LOAN")
-
-
-def get_rle_credit_card_loan_tracking_period(data: pd.DataFrame) -> pd.DataFrame:
-    return get_rle_tracking_period(data, "SK_ID_PREV", "CREDIT_CARD_LOAN")
-
-
-def get_rle_bureau_loan_tracking_period(data: pd.DataFrame) -> pd.DataFrame:
-    """
-    Calculate tracking periods for loans using run-length encoding.
-
-    This function calculates the tracking periods for loans by grouping
-    the data by 'SK_ID_BUREAU' and applying run-length encoding (RLE)
-    to the 'MONTHS_BALANCE' column. The RLE algorithm identifies runs
-    of consecutive months and returns the start and end months for each run.
-
-    Parameters
-    ----------
-    data : pd.DataFrame
-        The input DataFrame containing loan tracking data with columns
-        'SK_ID_BUREAU' and 'MONTHS_BALANCE'.
-
-    Returns
-    -------
-    pd.DataFrame
-        A DataFrame with tracking periods for each loan,
-        including 'SK_ID_BUREAU', 'min', 'max', 'count', and 'jumps_rle'.
-    """
-    tracking = data.reset_index()
-    tracking = tracking[["SK_ID_BUREAU", "MONTHS_BALANCE"]]
-    # tracking.SK_ID_BUREAU = tracking.SK_ID_BUREAU.astype(np.uint32)
-    tracking.MONTHS_BALANCE = tracking.MONTHS_BALANCE.astype(np.uint8)
-    tracking = tracking.groupby(by="SK_ID_BUREAU")
-    tracking = tracking.agg({"MONTHS_BALANCE": ["min", "max", "count", jumps_rle]})
-    months_agg_cols = tracking.columns[:3]
-    tracking[months_agg_cols] = tracking[months_agg_cols].astype(np.uint8)
-    tracking.columns.name = "BUREAU_LOAN_TRACKING_PERIOD"
-    return tracking
-
-
-def get_rle_bureau_loan_tracking_period_by_client(data: pd.DataFrame) -> pd.DataFrame:
-    """
-    Calculate tracking periods for applicants using run-length encoding.
-
-    This function calculates the tracking periods for applicants by sorting
-    the data by 'SK_ID_CURR' and 'MONTHS_BALANCE', removing duplicates,
-    and applying run-length encoding (RLE) to the 'MONTHS_BALANCE' column.
-    The RLE algorithm identifies runs of consecutive months and returns
-    the start and end months for each run.
-
-    Parameters
-    ----------
-    data : pd.DataFrame
-        The input DataFrame containing applicant tracking data with columns
-        'SK_ID_CURR' and 'MONTHS_BALANCE'.
-
-    Returns
-    -------
-    pd.DataFrame
-        A DataFrame with tracking periods for each applicant,
-        including 'SK_ID_CURR', 'min', 'max', 'count', and 'jumps_rle'.
-    """
-    tracking = data.reset_index()
-    tracking = tracking[["SK_ID_CURR", "MONTHS_BALANCE"]]
-    # tracking.SK_ID_CURR = tracking.SK_ID_CURR.astype(np.uint32)
-    tracking.MONTHS_BALANCE = tracking.MONTHS_BALANCE.astype(np.uint8)
-    tracking = tracking.sort_values(by=["SK_ID_CURR", "MONTHS_BALANCE"])
-    tracking = tracking.drop_duplicates()
-    tracking = tracking.groupby(by="SK_ID_CURR")
-    tracking = tracking.agg({"MONTHS_BALANCE": ["min", "max", "count", jumps_rle]})
-    months_agg_cols = tracking.columns[:3]
-    tracking[months_agg_cols] = tracking[months_agg_cols].astype(np.uint8)
-    tracking.columns.name = "BUREAU_LOAN_TRACKING_PERIOD_BY_CLIENT"
-    return tracking
-
-
-def get_rle_bureau_loan_feature_variation(
-    data: pd.DataFrame,
-    features: Union[str, List[str]]
-) -> pd.DataFrame:
-    """
-    Calculate run-length encoded (RLE) variations for specified features per loan.
-
-    This function computes RLE variations for specified features of loans based on
-    the 'SK_ID_BUREAU' identifier. It provides flexibility to calculate RLE variations
-    for one or more features.
-
-    Parameters
-    ----------
-    data : pd.DataFrame
-        The input DataFrame containing loan data.
-    features : Union[str, List[str]]
-        A single feature or a list of features for which RLE variations will be calculated.
-
-    Returns
-    -------
-    pd.DataFrame
-        A DataFrame containing RLE variations for each specified feature per loan,
-        with columns for 'SK_ID_BUREAU', 'M_1ST', 'M_LST', 'M_CNT', 'M_RLE', and the specified features.
-
-    Example
-    -------
-    >>> data = pd.DataFrame({'SK_ID_BUREAU': [1, 1, 1, 2, 2, 2],
-    ...                      'MONTHS_BALANCE': [0, 1, 2, 0, 1, 2],
-    ...                      'FEATURE_A': [10, 10, 15, 5, 5, 5],
-    ...                      'FEATURE_B': [0, 1, 0, 1, 1, 0]})
-    >>> get_rle_loan_feature_variations(data, ['FEATURE_A', 'FEATURE_B'])
-    
-       SK_ID_BUREAU  M_1ST  M_LST  M_CNT       M_RLE  FEATURE_A  FEATURE_B
-    0             1      0      2      3  ((10, 2), (15, 1))         10          0
-    1             2      0      2      3    ((5, 3), (1, 2))          5          1
-    """
-    
-    if isinstance(features, str):
-        features = [features]
-    
-    tracking = data.reset_index()
-    tracking = tracking[["SK_ID_BUREAU", "MONTHS_BALANCE"] + features]
-    # tracking.SK_ID_BUREAU = tracking.SK_ID_BUREAU.astype(np.uint32)
-    tracking.MONTHS_BALANCE = tracking.MONTHS_BALANCE.astype(np.uint8)
-    tracking = tracking.groupby(by="SK_ID_BUREAU")
-    
-    agg_rules = (
-        {"MONTHS_BALANCE": ["min", "max", "count", jumps_rle]} |
-        {feature: series_rle_reduction for feature in features}
-    )
-    
-    tracking = tracking.agg(agg_rules)
-
-    months_agg_cols = tracking.columns[:3]
-    tracking[months_agg_cols] = tracking[months_agg_cols].astype(np.uint8)
-    tracking.columns.name = f"{data.columns.name}_VARIATIONS"
-    
     return tracking
 
 
@@ -685,29 +547,124 @@ def get_rle_bureau_loan_feature_by_client_variation(
     0           1      0      2      3  ((10, 2), (15, 1))         10          0
     1           2      0      2      3    ((5, 3), (1, 2))          5          1
     """
-    
     if isinstance(features, str):
         features = [features]
-    
     tracking = data.reset_index()
     tracking = tracking[["SK_ID_CURR", "MONTHS_BALANCE"] + features]
-    # tracking.SK_ID_CURR = tracking.SK_ID_CURR.astype(np.uint32)
     tracking.MONTHS_BALANCE = tracking.MONTHS_BALANCE.astype(np.uint8)
     tracking = tracking.sort_values(by=["SK_ID_CURR", "MONTHS_BALANCE"])    
     tracking = tracking.groupby(by="SK_ID_CURR")
-    
-    agg_rules = (
-        {"MONTHS_BALANCE": ["min", "max", "count", jumps_rle]} |
-        {feature: series_rle_reduction for feature in features}
-    )
-    
+    agg_rules = {feature: series_rle_reduction for feature in features}
     tracking = tracking.agg(agg_rules)
-
-    months_agg_cols = tracking.columns[:3]
-    tracking[months_agg_cols] = tracking[months_agg_cols].astype(np.uint8)
+    tracking[features] = tracking[features].applymap(np.array)
     tracking.columns.name = f"{data.columns.name}_BY_CLIENT_VARIATIONS"
-    
     return tracking
+
+def get_rle_bureau_loan_feature_variation(
+    data: pd.DataFrame,
+    features: Union[str, List[str]]
+) -> pd.DataFrame:
+    """
+    Calculate run-length encoded (RLE) variations for specified features per loan.
+
+    This function computes RLE variations for specified features of loans based on
+    the 'SK_ID_BUREAU' identifier. It provides flexibility to calculate RLE variations
+    for one or more features.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The input DataFrame containing loan data.
+    features : Union[str, List[str]]
+        A single feature or a list of features for which RLE variations will be calculated.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing RLE variations for each specified feature per loan,
+        with columns for 'SK_ID_BUREAU', 'M_1ST', 'M_LST', 'M_CNT', 'M_RLE',
+        and the specified features.
+
+    Example
+    -------
+    >>> data = pd.DataFrame({'SK_ID_BUREAU': [1, 1, 1, 2, 2, 2],
+    ...                      'MONTHS_BALANCE': [0, 1, 2, 0, 1, 2],
+    ...                      'FEATURE_A': [10, 10, 15, 5, 5, 5],
+    ...                      'FEATURE_B': [0, 1, 0, 1, 1, 0]})
+    >>> get_rle_loan_feature_variations(data, ['FEATURE_A', 'FEATURE_B'])
+    
+       SK_ID_BUREAU  M_1ST  M_LST  M_CNT       M_RLE  FEATURE_A  FEATURE_B
+    0             1      0      2      3  ((10, 2), (15, 1))         10          0
+    1             2      0      2      3    ((5, 3), (1, 2))          5          1
+    """
+    if isinstance(features, str):
+        features = [features]
+    tracking = data.reset_index()
+    tracking = tracking[["SK_ID_BUREAU", "MONTHS_BALANCE"] + features]
+    tracking.MONTHS_BALANCE = tracking.MONTHS_BALANCE.astype(np.uint8)
+    tracking = tracking.groupby(by="SK_ID_BUREAU")
+    agg_rules = {feature: series_rle_reduction for feature in features}
+    tracking = tracking.agg(agg_rules)
+    tracking[features] = tracking[features].applymap(np.array)
+    tracking.columns.name = f"{data.columns.name}_VARIATIONS"
+    return tracking
+
+
+def get_rle_pos_cash_loan_tracking_period(data: pd.DataFrame) -> pd.DataFrame:
+    return get_rle_tracking_period(data, "SK_ID_PREV", "POS_CASH_LOAN")
+
+
+def get_rle_credit_card_loan_tracking_period(data: pd.DataFrame) -> pd.DataFrame:
+    return get_rle_tracking_period(data, "SK_ID_PREV", "CREDIT_CARD_LOAN")
+
+
+def get_rle_bureau_loan_tracking_period(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculate tracking periods for loans using run-length encoding.
+
+    This function calculates the tracking periods for loans by grouping
+    the data by 'SK_ID_BUREAU' and applying run-length encoding (RLE)
+    to the 'MONTHS_BALANCE' column. The RLE algorithm identifies runs
+    of consecutive months and returns the start and end months for each run.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The input DataFrame containing loan tracking data with columns
+        'SK_ID_BUREAU' and 'MONTHS_BALANCE'.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with tracking periods for each loan,
+        including 'SK_ID_BUREAU', 'min', 'max', 'count', and 'jumps_rle'.
+    """
+    return get_rle_tracking_period(data, "SK_ID_BUREAU", "BUREAU_LOAN")
+
+
+def get_rle_bureau_loan_tracking_period_by_client(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculate tracking periods for applicants using run-length encoding.
+
+    This function calculates the tracking periods for applicants by sorting
+    the data by 'SK_ID_CURR' and 'MONTHS_BALANCE', removing duplicates,
+    and applying run-length encoding (RLE) to the 'MONTHS_BALANCE' column.
+    The RLE algorithm identifies runs of consecutive months and returns
+    the start and end months for each run.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The input DataFrame containing applicant tracking data with columns
+        'SK_ID_CURR' and 'MONTHS_BALANCE'.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with tracking periods for each applicant,
+        including 'SK_ID_CURR', 'min', 'max', 'count', and 'jumps_rle'.
+    """
+    return get_rle_tracking_period(data, "SK_ID_CURR", "BUREAU_LOAN_BY_CLIENT")
 
 
 """ Bureau
