@@ -10,14 +10,18 @@ from home_credit.kernel import one_hot_encode_all_cats
 
 from home_credit.impute import impute_credit_card_balance_drawings
 from home_credit.groupby import (
+    get_bureau_loan_status,
     get_bureau_loan_status_by_month,
     get_bureau_loan_status_by_client_and_month,
-    get_bureau_loan_status,
     get_bureau_loan_status_by_client,
+    
+    get_bureau_loan_activity,
     get_bureau_loan_activity_by_month,
     get_bureau_loan_activity_by_client_and_month,
+    
     get_bureau_mean_loan_activity,
     get_bureau_mean_loan_activity_by_client,
+    
     get_rle_bureau_loan_tracking_period,
     get_rle_bureau_loan_tracking_period_by_client,
     get_rle_bureau_loan_feature_variation,
@@ -33,7 +37,9 @@ from home_credit.groupby import (
     get_clean_installments_payments_repaid_and_dpd,
     get_clean_installments_payments_expected_dpd_by_loan,
     get_clean_installments_payments_expected_dpd_by_client,
-    get_installments_payments_by_installment
+    get_installments_payments_by_installment,
+    
+    get_extended_clean_bureau
 )
 # from home_credit.clean_up import *
 
@@ -300,6 +306,22 @@ class BureauBalance(HomeCreditTable):
         )
 
     @classmethod
+    def loan_activity(cls,
+        alpha: Optional[float] = 1,
+        decimals: Optional[int] = 2,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.Series:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_bureau_loan_activity(
+                BureauBalance.clean(), alpha, decimals
+            ),
+            "bureau_loan_status"
+        )
+
+    @classmethod
     def loan_status_by_client(cls,
         alpha: Optional[float] = 1,
         decimals: Optional[int] = 2,
@@ -406,7 +428,7 @@ class BureauBalance(HomeCreditTable):
         return controlled_load(
             this_f_name(), locals().copy(),
             lambda: get_rle_bureau_loan_feature_variation(
-                BureauBalance.loan_activity_by_month(), "ACTIVE"
+                BureauBalance.loan_activity_by_month(), "ACTIVITY"
             ),
             "rle_bureau_loan_activity_variation"
         )
@@ -788,6 +810,39 @@ class Bureau(HomeCreditTable):
         cast_columns(data, "CREDIT_DAY_OVERDUE", np.uint16)
         # Downcast float32 of financial_statement is impossible : all NA (except one)
 
+    @classmethod
+    def extended_clean(cls,
+        alpha: Optional[float] = 1,
+        decimals: Optional[int] = 2,
+        include_rle: Optional[bool] = False,
+        no_cache: Optional[bool] = True,
+        from_file: Optional[bool] = True,
+        update_file:  Optional[bool] = False
+    ) -> pd.DataFrame:
+        return controlled_load(
+            this_f_name(), locals().copy(),
+            lambda: get_extended_clean_bureau(
+                Bureau.clean(),
+                BureauBalance.loan_status(alpha=alpha, decimals=decimals),
+                BureauBalance.loan_activity(alpha=alpha, decimals=decimals),
+                (
+                    BureauBalance.rle_loan_tracking_period()
+                    .rename(columns={"MONTHS_BALANCE": "MONTH_support"})
+                    if include_rle else None
+                ),
+                (
+                    BureauBalance.rle_loan_status_variation(decimals=decimals)
+                    .rename(columns={"STATUS": "STATUS_frame"})
+                    if include_rle else None
+                ),
+                (
+                    BureauBalance.rle_loan_activity_variation()
+                    .rename(columns={"ACTIVITY": "ACTIVITY_frame"})
+                    if include_rle else None
+                )
+            ),
+            "extended_clean_bureau"
+        )
 
 
 class PreviousApplication(HomeCreditTable):

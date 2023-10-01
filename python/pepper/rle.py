@@ -323,6 +323,28 @@ def jumps_rle(s: pd.Series) -> tuple:
 def rle_expr_to_numpy(
     rle_expr: Union[list, tuple, np.ndarray]
 ) -> np.ndarray:
+    """
+    Convert a Run-Length Encoding (RLE) expression to a NumPy ndarray.
+
+    Parameters:
+    -----------
+    rle_expr : Union[list, tuple, np.ndarray]
+        The RLE expression to be converted. It can be a list, tuple, or a NumPy ndarray.
+
+    Returns:
+    --------
+    np.ndarray
+        A NumPy ndarray containing the converted RLE expression.
+
+    Notes:
+    ------
+    - If 'rle_expr' is np.nan or any scalar, an empty NumPy array is returned.
+    - This function ensures that the output is always a NumPy ndarray.
+    """
+    # If rle_expr is a scalar or np.nan, return an empty NumPy array
+    if np.isscalar(rle_expr) or not np.ndim(rle_expr):
+        return np.empty((0, 2))
+
     # Convert inputs to NumPy arrays if they are not already
     return rle_expr if isinstance(rle_expr, np.ndarray) else np.array(rle_expr)
 
@@ -351,10 +373,6 @@ def rle_support_size(
 
     # Extract values and counts
     _, counts = _split_value_count(rle_support)
-    """if rle_support.shape[1] == 2:
-        counts = rle_support[:, 1]
-    else:
-        raise ValueError("Invalid input format. Input must consist of jump-count pairs.")"""
 
     return np.sum(counts)
 
@@ -370,10 +388,6 @@ def rle_support_min_index(
 
     # Extract values and counts
     jumps, _ = _split_value_count(rle_support)
-    """if rle_support.shape[1] == 2:
-        jumps = rle_support[:, 0]
-    else:
-        raise ValueError("Invalid input format. Input must consist of jump-count pairs.")"""
 
     return -1 + jumps[0]
 
@@ -389,10 +403,6 @@ def rle_support_max_index(
 
     # Extract values and counts
     jumps, counts = _split_value_count(rle_support)
-    """if rle_support.shape[1] == 2:
-        jumps, counts = rle_support[:, 0], rle_support[:, 1]
-    else:
-        raise ValueError("Invalid input format. Input must consist of jump-count pairs.")"""
     
     return -1 + np.sum(jumps * counts)
 
@@ -408,13 +418,6 @@ def rle_support_hole_count(
 
     # Extract values and counts
     jumps, counts = _split_value_count(rle_support)
-    """if rle_support.shape[1] == 2:
-        jumps, counts = rle_support[:, 0], rle_support[:, 1]
-    else:
-        raise ValueError(
-            "Invalid input format. "
-            "Input must consist of value-count pairs."
-        )"""
 
     return np.sum(counts[jumps > 1])
 
@@ -463,13 +466,6 @@ def rle_expand(
 
     # Extract values and counts
     values, counts = _split_value_count(rle)
-    """if rle.shape[1] == 2:
-        values, counts = rle[:, 0], rle[:, 1].astype(int)
-    else:
-        raise ValueError(
-            "Invalid input format. "
-            "Input must consist of value-count pairs."
-        )"""
 
     # Expand the series
     expanded_series = np.repeat(values, counts)
@@ -520,10 +516,12 @@ def rle_expand_row(
     >>> print(f"expanded row: {rle_expand_row(support, frame, row_size=10)}")
     >>> print(f"expanded row: {rle_expand_row(support, frame, row_size=8)}")
     >>> print(f"expanded row: {rle_expand_row(support, frame, row_size=0)}")
+    >>> print(f"expanded row: {rle_expand_row(np.nan, np.nan, row_size=5)}")
     expanded row: [ 1.  2.  2. nan nan  2.  3.  3.  4.]
     expanded row: [ 1.  2.  2. nan nan  2.  3.  3.  4. nan]
     expanded row: [ 1.  2.  2. nan nan  2.  3.  3.]
     expanded row: []
+    expanded row: [nan nan nan nan nan]
     ...: UserWarning: Row size is less than the extension of the support. Some data may be lost.
     """
     # Convert inputs to NumPy arrays if they are not already
@@ -536,15 +534,11 @@ def rle_expand_row(
             "Sizes mismatch between the RLE support and the RLE frame."
         )
 
-    if support.size == 0:
-        # If the support is empty, return an empty array
-        return np.array([])
-
     # Calculate the maximum index in the support
     expanded_support_size = 1 + rle_support_max_index(support)
 
     # Expand the support and frame using the appropriate functions
-    expanded_support = rle_support_expand(support)
+    expanded_support = rle_support_expand(support).astype(int)
     expanded_frame = rle_expand(frame)
 
     if row_size is None:
