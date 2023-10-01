@@ -1,5 +1,6 @@
+# pepper/np_utils.py
 import numpy as np
-
+from typing import Any, List, Union
 
 def subindex(
     a: np.ndarray,
@@ -97,7 +98,7 @@ def subindex_nd(
     Example
     -------
     >>> a = np.array([[0, 1], [0, 1], [1, 2], [1, 2], [1, 2]])
-    >>> subindex(a)
+    >>> subindex_nd(a)
     array([0, 1, 0, 1, 2])
 
     Notes
@@ -131,3 +132,97 @@ def subindex_nd(
     inv_idx[idx] = np.arange(len(idx))
     
     return x[inv_idx]
+
+
+def ndarray_to_list(arr: np.ndarray) -> Union[List[Any], Any]:
+    """
+    Recursively convert a numpy ndarray to an equivalent nested list.
+
+    Parameters
+    ----------
+    arr : np.ndarray
+        The numpy ndarray to be converted.
+
+    Returns
+    -------
+    Union[List[Any], Any]
+        The converted list. If the input is not an ndarray, it is returned as is.
+        If the input is a one-dimensional ndarray, it is converted to a regular list.
+        If the input is a multi-dimensional ndarray, it is converted to a nested list structure.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> s = [[1, 2], [3, 4]]
+    >>> a = np.array(s)
+    >>> converted_list = ndarray_to_list(a)
+    >>> print(converted_list)
+    [[1, 2], [3, 4]]
+
+    >>> b = np.array([1, 2, 3])
+    >>> converted_list = ndarray_to_list(b)
+    >>> print(converted_list)
+    [1, 2, 3]
+
+    >>> c = 42
+    >>> converted_value = ndarray_to_list(c)
+    >>> print(converted_value)
+    42
+    """
+    if not isinstance(arr, np.ndarray):
+        return arr
+    if arr.ndim == 1:
+        return arr.tolist()
+    return [ndarray_to_list(sub_arr) for sub_arr in arr]
+
+
+def reconstruct_ndarray(arr: list | tuple | np.ndarray) -> np.ndarray:
+    """
+    Recursively reconstructs a multidimensional ndarray from a structure
+    of nested ndarrays, lists, and/or tuples.
+
+    Parameters
+    ----------
+    arr : np.ndarray or list or tuple
+        The input structure to be reconstructed into an ndarray.
+
+    Returns
+    -------
+    np.ndarray
+        The reconstructed ndarray.
+
+    Notes
+    -----
+    This function takes a structure consisting of nested ndarrays, lists,
+    and/or tuples, and reconstructs it into a multidimensional ndarray
+    by stacking the arrays along the appropriate dimension.
+    If the input is already an ndarray, it is returned as is.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> def reconstruct_ndarray(arr):
+    ...     if not isinstance(arr, (list, tuple, np.ndarray)):
+    ...         return arr
+    ...     return np.stack([reconstruct_ndarray(sub_arr) for sub_arr in arr])
+    ...
+    >>> x = [
+    ...     np.array([(1, 2, 3), (4, 5, 6)]),
+    ...     np.array([(7, 8, 9), (10, 11, 12)])
+    ... ]
+    >>> print(x)
+    [array([[1, 2, 3],
+            [4, 5, 6]]),
+     array([[ 7,  8,  9],
+            [10, 11, 12]])]
+    >>> reconstructed_x = reconstruct_ndarray(x)
+    >>> print(reconstructed_x)
+    array([[[ 1,  2,  3],
+            [ 4,  5,  6]],
+
+           [[ 7,  8,  9],
+            [10, 11, 12]]])
+    """
+    if not isinstance(arr, (list, tuple, np.ndarray)) or len(arr) == 0:
+        return arr
+    return np.stack([reconstruct_ndarray(sub_arr) for sub_arr in arr])

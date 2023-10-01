@@ -2,9 +2,11 @@ from typing import Optional, Dict, Callable
 
 import inspect, hashlib, json, re, os
 import pandas as pd
+import numpy as np
 
 from pepper.env import get_tmp_dir
 from pepper.utils import create_if_not_exist
+from pepper.np_utils import reconstruct_ndarray  #, ndarray_to_list
 from pepper.cache import Cache
 
 
@@ -238,15 +240,25 @@ def add_entry_to_index(
     -------
     None
     """
+    # Create folder names based on class_name and method_name
     class_folder = camel_to_snake(class_name)
     method_folder = method_name
+    
+    # Attempt to generate the hash code for the arguments
+    hashed_code = hash_code(arguments)
+    
+    # Ensure class_folder and method_folder exist in the index
     if class_folder not in _persist_index:
         _persist_index[class_folder] = {}
     class_index = _persist_index[class_folder]
     if method_folder not in class_index:
         class_index[method_folder] = {}
+
+    # Add the entry to the method_index using the hash code as the key
     method_index = class_index[method_folder]
-    method_index[hash_code(arguments)] = arguments
+    method_index[hashed_code] = arguments
+    
+    # Save the updated persistence index
     save_persist_index(_persist_index)
 
 
@@ -282,6 +294,206 @@ def is_in_index(
     return False
 
 
+""" Load and save
+"""
+
+
+def has_more_than_one_dim(x: np.ndarray) -> bool:
+    """
+    Check if an ndarray has more than one dimension.
+
+    Parameters:
+    -----------
+    x : np.ndarray
+        The numpy array to check.
+
+    Returns:
+    --------
+    bool
+        True if the array has more than one dimension, False otherwise.
+
+    Example:
+    --------
+    >>> arr = np.array([1, 2, 3])
+    >>> has_more_than_one_dim(arr)
+    False
+    >>> arr = np.array([[1, 2, 3], [4, 5, 6]])
+    >>> has_more_than_one_dim(arr)
+    True
+    """
+    return isinstance(x, np.ndarray) and x.ndim > 1
+
+
+def is_multi_dim_array_col(
+    s: pd.Series,
+    weak_check: bool = False
+) -> bool:
+    """
+    Check if a Pandas Series contains multi-dimensional numpy arrays in its elements.
+
+    Parameters:
+    -----------
+    s : pd.Series
+        The Pandas Series to check.
+
+    weak_check : bool, optional (default=False)
+        If True, performs a weak check by examining only the first element of the Series.
+        If False, checks all elements in the Series.
+
+    Returns:
+    --------
+    bool
+        True if the Series contains multi-dimensional arrays, False otherwise.
+
+    Example:
+    --------
+    >>> s = pd.Series([np.array([1, 2, 3]), np.array([[4, 5], [6, 7]])])
+    >>> is_multi_dim_array_col(s)
+    True
+    >>> s = pd.Series([np.array([1, 2, 3]), np.array([4, 5, 6])])
+    >>> is_multi_dim_array_col(s)
+    False
+    >>> s = pd.Series([np.array([1, 2, 3])])
+    >>> is_multi_dim_array_col(s, weak_check=True)
+    False
+    """
+    if s.empty:
+        return False
+    if weak_check:
+        return has_more_than_one_dim(s.iloc[0])
+    return s.apply(has_more_than_one_dim).any()
+
+
+def encode_ndarrays_for_parquet(
+    data: pd.DataFrame,
+    inplace: bool = False
+) -> pd.DataFrame:
+    """
+    Encode multi-dimensional numpy arrays in a DataFrame for Parquet serialization.
+
+    Parameters:
+    -----------
+    data : pd.DataFrame
+        The DataFrame containing columns to be encoded.
+
+    inplace : bool, optional (default=False)
+        If True, the DataFrame will be modified in-place.
+        If False, a copy of the DataFrame will be created.
+
+    Returns:
+    --------
+    pd.DataFrame
+        The modified DataFrame with encoded columns.
+
+    Example:
+    --------
+    >>> import pandas as pd
+    >>> import numpy as np
+    >>> data = pd.DataFrame({'A': [np.array([1, 2, 3]), np.array([[4, 5], [6, 7]])],
+    ...                      'B': [np.array([8, 9]), np.array([[10], [11]])]})
+    >>> encoded_data = encode_ndarrays_for_parquet(data)
+    >>> encoded_data.columns
+    Index(['A_flat', 'A_shape', 'B_flat', 'B_shape'], dtype='object')
+
+    This function encodes multi-dimensional numpy arrays in the DataFrame
+    by replacing each ndarray column 'A'with two columns 'A_flat' and 'A_shape'
+    representing the flattened array and its original shape, respectively.
+    """
+
+    if not inplace:
+        data = data.copy()
+    # Iterate through columns and identify those containing multi-dimensional ndarrays
+    # For each such column 'A', replace it with the column pair 'A_flat' and 'A_shape'
+    for col in data.columns:
+        s = data[col]
+        # Note: We can't use 'for loc, col in enumerate(data.columns)'
+        # since modifying 'data.columns' internally in the loop
+        loc = data.columns.get_loc(col)
+        if is_multi_dim_array_col(s):
+            data.insert(loc, f"{col}_flat", s.apply(np.ravel))
+            data.insert(loc, f"{col}_shape", s.apply(np.shape))
+            data.drop(columns=col, inplace=True)
+    return data
+
+
+def decode_ndarrays_from_parquet(
+    data: pd.DataFrame,
+    inplace: bool = True
+) -> pd.DataFrame:
+    """
+    Decode ndarrays that were encoded for Parquet storage.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The DataFrame containing columns with encoded ndarrays.
+    inplace : bool, optional
+        If True, decode ndarrays in-place (default is True).
+
+    Returns
+    -------
+    pd.DataFrame
+        The DataFrame with ndarrays decoded.
+
+    Notes
+    -----
+    This function decodes ndarrays that were previously encoded for storage
+    in Parquet files. It identifies pairs of columns in the DataFrame,
+    where one column represents the shape of an ndarray, and the other column
+    represents the flattened ndarray data. It then decodes these columns and
+    replaces them with the original ndarray columns.
+
+    Examples
+    --------
+    >>> data = pd.DataFrame({
+    ...     'A_shape': [(2, 3), (3, 2)],
+    ...     'A_flat': [
+    ...         np.array([1, 2, 3, 4, 5, 6]),
+    ...         np.array([7, 8, 9, 10, 11, 12])
+    ...     ]
+    ... })
+    >>> decoded_data = decode_ndarrays_from_parquet(data)
+        A
+    0	[[1, 2, 3], [4, 5, 6]]
+    1	[[7, 8], [9, 10], [11, 12]]
+    """
+    if not inplace:
+        data = data.copy()
+
+    # Start by identifying all the pairs of columns A_shape, A_flat
+    # 1/ Form the `shape_cols` list of A for each A_shape column 
+    # 2/ Form the `flat_cols` list of A for each A_flat column
+    # 3/ Produce `new_cols` as the intersection of the two lists
+    shape_cols = [col.replace("_shape", "") for col in data.columns if col.endswith("_shape")]
+    flat_cols = [col.replace("_flat", "") for col in data.columns if col.endswith("_flat")]
+    new_cols = list(set(shape_cols).intersection(flat_cols))
+
+    # For each of them, replace a column A with A_flat.reshape(A_shape)
+    def decode_ndarray(row):
+        shape = row[0]
+        flat = row[1]
+        return flat.reshape(shape)
+    
+    # For each column pair that needs decoding
+    for new_col in new_cols:
+        # Get the location (index) of the shape column
+        loc = data.columns.get_loc(f"{new_col}_shape")
+
+        # Identify the old shape and flat columns
+        old_cols = [f"{new_col}_shape", f"{new_col}_flat"]
+
+        # Decode the ndarray by applying the decode_ndarray function to each row
+        decoded = data[old_cols].apply(decode_ndarray, axis=1)
+
+        # Insert the decoded ndarray column at the original location
+        data.insert(loc, new_col, decoded)
+
+        # Drop the old shape and flat columns as they are no longer needed
+        data.drop(columns=old_cols, inplace=True)
+
+    return data
+
+
 def save_to_parquet(
     data: pd.DataFrame,
     class_name: str,
@@ -305,16 +517,32 @@ def save_to_parquet(
     Returns
     -------
     None
+    
+    Note
+    ----
+    This function converts numpy arrays in the DataFrame to lists of lists
+    to avoid 'ArrowInvalid' issues when saving to Parquet. This conversion
+    ensures that the data can be correctly stored and loaded.
     """
+    # Define the folder path based on naming conventions
     folder_path = os.path.join(
         get_persist_dir(),
         camel_to_snake(class_name),
         method_name
     )
+    # Create the folder if it doesn't exist
     create_if_not_exist(folder_path)
+    
+    # Define the file path with a unique hash code
     file_path = os.path.join(folder_path, f"{hash_code(arguments)}.pqt")
+    
+    # Convert numpy arrays to lists of lists to avoid 'ArrowInvalid' issue
+    # data = data.applymap(lambda x: list(x) if isinstance(x, np.ndarray) else x)
+    encoded_data = encode_ndarrays_for_parquet(data)
+    
+    # Save the DataFrame to Parquet
     print(f"Save to {file_path}")
-    data.to_parquet(file_path, engine="pyarrow", compression="gzip")
+    encoded_data.to_parquet(file_path, engine="pyarrow", compression="gzip")
 
 
 def load_from_parquet(
@@ -343,18 +571,37 @@ def load_from_parquet(
     ------
     FileNotFoundError
         If the Parquet file does not exist.
+        
+    Note
+    ----
+    This function converts lists of lists in the loaded DataFrame back to numpy
+    arrays to ensure consistency with the original data structure. This conversion
+    is necessary due to the use of applymap during the saving process.
     """
+    # Construct the folder path based on class and method names
     folder_path = os.path.join(
         get_persist_dir(),
         camel_to_snake(class_name),
         method_name
     )
+    
+    # Generate the full file path
     file_path = os.path.join(folder_path, f"{hash_code(arguments)}.pqt")
 
+    # Check if the Parquet file exists
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"Parquet file not found: {file_path}")
 
-    return pd.read_parquet(file_path, engine="pyarrow")
+    # Load the data from the Parquet file
+    loaded_data = pd.read_parquet(file_path, engine="pyarrow")
+
+    # Convert lists of lists back to numpy arrays
+    # loaded_data = loaded_data.applymap(
+    #     lambda x: reconstruct_ndarray(x) if isinstance(x, np.ndarray) else x
+    # )
+    decode_ndarrays_from_parquet(loaded_data)
+    
+    return loaded_data
 
 
 def controlled_load(
@@ -408,10 +655,6 @@ def controlled_load(
         loader = lambda: load_from_parquet(*params)
         # Return loaded data or initialize it in the cache
         return loader() if no_cache else Cache.init(in_cache_name, loader)
-
-    # TODO après les cas simples,
-    # tester sur les cas où il faut passer au builder
-    # des arguments supplémentaires
     
     # If not loading from file or data is not in the index, build the data
     data = builder() if no_cache else Cache.init(in_cache_name, builder)
